@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P1 Tutorial — Part 1: Talking to Services</title>
+  <style>
+    :root {
+      --ink: #15242c;
+      --muted: #586a72;
+      --paper: #fbfaf5;
+      --navy: #102f3d;
+      --navy-deep: #09232f;
+      --blue: #176b87;
+      --cyan: #33a7b8;
+      --cyan-soft: #dff3f3;
+      --orange: #cf643d;
+      --orange-soft: #fae9e1;
+      --gold: #e1ad4c;
+      --gold-soft: #fff5dc;
+      --green: #2f7759;
+      --green-soft: #e3f1e9;
+      --red: #a84436;
+      --line: #d5d2c8;
+      --code-bg: #0d2834;
+      --white: #fffefb;
+      --shadow: 0 12px 30px rgb(16 47 61 / 8%);
+      --radius: 10px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+
+    a { color: var(--blue); text-underline-offset: 3px; }
+    code, pre { font-family: var(--mono); }
+    code {
+      padding: .12rem .34rem;
+      border-radius: 4px;
+      background: #e8eeeb;
+      font-size: .88em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 1rem 0;
+      padding: 1rem 1.2rem;
+      border-radius: var(--radius);
+      color: #e9f5f3;
+      background: var(--code-bg);
+      line-height: 1.55;
+      tab-size: 2;
+    }
+    pre code {
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      font-size: .84rem;
+    }
+
+    /* ── Page header ──────────────────────────────────────────────── */
+    .page-header {
+      padding: 1.6rem 0;
+      border-bottom: 3px solid var(--gold);
+      color: white;
+      background: var(--navy);
+    }
+    .page-header-inner {
+      width: min(1080px, calc(100% - 2rem));
+      margin: auto;
+    }
+    .page-header small {
+      display: block;
+      margin-bottom: .25rem;
+      color: #98c5c7;
+      font: 700 .74rem var(--mono);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .page-header h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 500;
+      letter-spacing: -.02em;
+    }
+    .page-header p {
+      margin: .4rem 0 0;
+      color: #b8d5d7;
+      font-size: .95rem;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────── */
+    .page-layout {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 840px);
+      gap: 3rem;
+      width: min(1080px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 2.5rem 0 5rem;
+    }
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      padding: .8rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgb(251 250 245 / 95%);
+      box-shadow: var(--shadow);
+    }
+    nav strong {
+      display: block;
+      margin-bottom: .4rem;
+      color: var(--navy);
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    nav a {
+      display: block;
+      padding: .25rem .4rem;
+      border-left: 2px solid transparent;
+      color: var(--muted);
+      font-size: .82rem;
+      text-decoration: none;
+    }
+    nav a:hover { border-left-color: var(--blue); color: var(--blue); }
+
+    main { min-width: 0; }
+    section { margin-bottom: 3.5rem; scroll-margin-top: 1rem; }
+    h2 {
+      margin: 0 0 .8rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--line);
+      color: var(--navy);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.4rem, 3vw, 1.8rem);
+      font-weight: 500;
+      letter-spacing: -.015em;
+    }
+    h3 {
+      margin: 1.8rem 0 .4rem;
+      color: var(--navy);
+      font-size: 1.05rem;
+    }
+    p { margin: .5rem 0 .9rem; }
+    ul, ol { padding-left: 1.3rem; }
+    li + li { margin-top: .3rem; }
+
+    /* ── Callouts ─────────────────────────────────────────────────── */
+    .callout {
+      margin: 1.2rem 0;
+      padding: .9rem 1.1rem;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: var(--radius);
+      background: var(--cyan-soft);
+    }
+    .callout p:first-child { margin-top: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .callout strong:first-child { color: var(--blue); }
+
+    .callout.checkpoint {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+    .callout.checkpoint strong:first-child { color: var(--green); }
+
+    .callout.ai {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+    .callout.ai strong:first-child { color: #805811; }
+
+    .callout.warning {
+      border-left-color: var(--orange);
+      background: var(--orange-soft);
+    }
+    .callout.warning strong:first-child { color: #8f4026; }
+
+    /* ── Wire format diagrams ─────────────────────────────────────── */
+    .wire {
+      margin: 1rem 0;
+      padding: .9rem 1.1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+    .wire pre {
+      margin: .5rem 0;
+      background: #1a3a48;
+    }
+    .wire .label {
+      display: block;
+      margin-bottom: .3rem;
+      color: var(--muted);
+      font: 700 .7rem var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Tables ────────────────────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: .65rem .8rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: white;
+      background: var(--navy);
+      font-size: .73rem;
+      letter-spacing: .03em;
+    }
+    td { font-size: .88rem; }
+    tr:last-child td { border-bottom: 0; }
+
+    /* ── Details ───────────────────────────────────────────────────── */
+    details {
+      margin: 1rem 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      overflow: hidden;
+    }
+    summary {
+      padding: .7rem .9rem;
+      color: var(--navy);
+      background: #f3f1ea;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: .9rem;
+    }
+    details[open] summary { border-bottom: 1px solid var(--line); }
+    details > div { padding: .8rem 1rem; }
+    details pre { margin: .5rem 0; }
+    details p:first-child { margin-top: 0; }
+
+    /* ── Footer ────────────────────────────────────────────────────── */
+    footer {
+      padding: 1.2rem;
+      color: #c4d8da;
+      background: var(--navy-deep);
+      text-align: center;
+      font-size: .82rem;
+    }
+
+    /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 860px) {
+      .page-layout { display: block; }
+      nav { position: static; margin-bottom: 2rem; columns: 2; }
+      nav strong { column-span: all; }
+    }
+    @media (max-width: 480px) {
+      .page-layout { width: min(100% - 1.2rem, 1080px); }
+      nav { columns: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media print {
+      body { color: black; background: white; font-size: 10pt; }
+      .page-header { color: black; background: white; border-bottom: 2px solid black; }
+      .page-header small, .page-header p { color: #333; }
+      nav { display: none; }
+      .page-layout { display: block; width: 100%; padding: 1rem 0; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid #999; color: black; background: #f0f0f0; }
+      .callout, .wire, details, .table-wrap { box-shadow: none; break-inside: avoid; }
+      footer { color: black; background: white; border-top: 1px solid black; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <small>P1 Tutorial // Part 1 of 3</small>
+    <h1>Talking to Services</h1>
+    <p>Build standalone clients for each backend service before touching the gateway.</p>
+  </div>
+</header>
+
+<div class="page-layout">
+  <nav aria-label="Page contents">
+    <strong>Part 1</strong>
+    <a href="#why">Why start here</a>
+    <a href="#setup">Starting the services</a>
+    <a href="#time">Time service</a>
+    <a href="#time-wire">Time wire format</a>
+    <a href="#time-read">Reading the server</a>
+    <a href="#time-client">Building TimeClient</a>
+    <a href="#whois">WHOIS service</a>
+    <a href="#whois-wire">WHOIS wire format</a>
+    <a href="#whois-client">Building WhoisClient</a>
+    <a href="#redis">Redis RESP2 service</a>
+    <a href="#redis-wire">RESP2 wire format</a>
+    <a href="#redis-client">Building RedisClient</a>
+    <a href="#wrapup">What you've built</a>
+  </nav>
+
+  <main>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="why">
+      <h2>Why start here</h2>
+      <p>
+        The gateway project asks you to parse HTTP, talk to three backend services, and
+        orchestrate the results concurrently. That is a lot to debug at once. If your
+        WHOIS client has a framing bug, you will not discover it by staring at a 502
+        response from the gateway.
+      </p>
+      <p>
+        This tutorial has you build three tiny standalone programs — one per backend service —
+        before you open <code>Gateway.java</code> at all. Each program connects to a running
+        service, sends a request (or not), reads the response, and prints what it got. When all
+        three work, you will have already written most of the backend client code the gateway needs.
+        Transplanting it will be straightforward.
+      </p>
+      <p>
+        The three services use three different wire protocols. That is the point.
+        Every networked service defines its own rules for what bytes to send and what bytes
+        to expect back. Learning to read those rules and implement them precisely is the
+        core skill this project teaches.
+      </p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="setup">
+      <h2>Starting the services</h2>
+      <p>
+        All three backend services (plus the fLLM) start with one command. Open a terminal,
+        <code>cd</code> into your project directory, and run:
+      </p>
+      <pre><code>./start.sh</code></pre>
+      <p>
+        You should see four lines confirming the services are ready:
+      </p>
+      <pre><code>TIME_READY tcp=21037 udp=21037
+WHOIS_READY tcp=21043
+REDIS_RESP_READY tcp=21379
+FLLM_READY http=21904</code></pre>
+      <p>
+        Leave this terminal running. Open a second terminal for your client programs.
+        Every client you build in this tutorial will connect to <code>127.0.0.1</code>
+        on one of these ports.
+      </p>
+
+      <div class="callout warning">
+        <p>
+          <strong>If start.sh fails:</strong> make sure you have Java 21 or newer.
+          Check with <code>java -version</code>. The services use single-source
+          execution (<code>java SomeFile.java</code>), which requires at least Java 11,
+          and the gateway itself requires Java 21 for virtual threads.
+        </p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="time">
+      <h2>Service 1: RFC 868 Time</h2>
+      <p>
+        This is the simplest network protocol you will ever see. The client connects.
+        The server immediately sends exactly four bytes and closes the connection.
+        The client sends nothing. There is no request.
+      </p>
+      <p>
+        Those four bytes are an unsigned 32-bit integer in big-endian (network) byte order.
+        The value is the number of seconds since midnight, January 1, 1900 — not 1970.
+        That is the entire protocol. It is defined in
+        <a href="https://www.rfc-editor.org/rfc/rfc868.html">RFC 868</a>, which is
+        shorter than this paragraph.
+      </p>
+    </section>
+
+    <section id="time-wire">
+      <h3>The wire format</h3>
+      <p>
+        Here is what crosses the TCP connection, in its entirety:
+      </p>
+      <div class="wire">
+        <span class="label">Client → Server</span>
+        <pre><code>(nothing — the client sends zero bytes)</code></pre>
+        <span class="label">Server → Client</span>
+        <pre><code>┌────────┬────────┬────────┬────────┐
+│ byte 0 │ byte 1 │ byte 2 │ byte 3 │   ← 4 bytes, big-endian unsigned int
+└────────┴────────┴────────┴────────┘
+(server closes the connection)</code></pre>
+      </div>
+      <p>
+        "Big-endian" means the most significant byte comes first. Java's
+        <code>ByteBuffer</code> uses big-endian by default, so it matches the wire
+        order without any conversion. But <code>ByteBuffer.getInt()</code> returns a
+        signed Java <code>int</code>, and the protocol value is unsigned. You need
+        to widen it to a <code>long</code> without preserving the sign bit.
+      </p>
+    </section>
+
+    <section id="time-read">
+      <h3>Reading the server source</h3>
+      <p>
+        Open <code>services/time/TimeServer.java</code>. It is about 100 lines.
+        The important method is <code>timeMessage()</code> near the bottom:
+      </p>
+      <pre><code>private static byte[] timeMessage() {
+    long seconds = Instant.now().getEpochSecond() + SECONDS_1900_TO_1970;
+    return ByteBuffer.allocate(Integer.BYTES).putInt((int) seconds).array();
+}</code></pre>
+      <p>
+        Read this carefully. It takes the current Unix time (seconds since 1970),
+        adds 2,208,988,800 to shift to the 1900 epoch, casts to <code>int</code>
+        (which keeps only the low 32 bits), and packs it into a 4-byte big-endian
+        array. The cast to <code>int</code> is not a bug — the protocol only has
+        32 bits to work with.
+      </p>
+      <p>
+        The TCP handler is <code>serveTcp()</code>:
+      </p>
+      <pre><code>private static void serveTcp(Socket client) {
+    try (client) {
+        client.getOutputStream().write(timeMessage());
+    } catch (IOException exception) {
+        System.err.println("Time TCP request failed: " + exception.getMessage());
+    }
+}</code></pre>
+      <p>
+        The <code>try (client)</code> syntax is called try-with-resources. When the
+        block exits — whether normally or by exception — Java automatically calls
+        <code>client.close()</code>. The server writes four bytes and closes.
+        That is the complete server-side conversation.
+      </p>
+
+      <div class="callout">
+        <p>
+          <strong>Why read the server source?</strong> You have the source code for
+          the Time, WHOIS, and Redis services. Use it. When you are confused about
+          what a service expects or returns, the server code is the definitive answer.
+          This is a luxury you will not always have in practice, so take advantage
+          of it. (The fLLM is distributed as a JAR — you interact with it through
+          the provided <code>FakeLLMClient</code> class and do not need to read its
+          internals.)
+        </p>
+      </div>
+    </section>
+
+    <section id="time-client">
+      <h3>Building TimeClient.java</h3>
+      <p>
+        Create a new file called <code>TimeClient.java</code> anywhere in your project
+        directory. This is a standalone program, not part of the gateway. Here is
+        the complete implementation:
+      </p>
+      <pre><code>import java.io.InputStream;
+import java.net.Socket;
+import java.nio.ByteBuffer;
+
+public class TimeClient {
+    public static void main(String[] args) throws Exception {
+        try (var socket = new Socket("127.0.0.1", 21037)) {
+            socket.setSoTimeout(3000);
+
+            InputStream input = socket.getInputStream();
+            byte[] data = input.readNBytes(4);
+
+            if (data.length < 4) {
+                System.err.println("Server sent only " + data.length + " bytes");
+                return;
+            }
+
+            int signed = ByteBuffer.wrap(data).getInt();
+            long unsigned = Integer.toUnsignedLong(signed);
+            long window = unsigned / 60;
+
+            System.out.println("Raw bytes:       " + data.length);
+            System.out.println("Signed int:      " + signed);
+            System.out.println("Unsigned long:    " + unsigned);
+            System.out.println("Window (÷ 60):   " + window);
+        }
+    }
+}</code></pre>
+      <p>
+        Run it:
+      </p>
+      <pre><code>java TimeClient.java</code></pre>
+      <p>
+        Let's walk through every decision in this code.
+      </p>
+
+      <h3>The connection</h3>
+      <pre><code>try (var socket = new Socket("127.0.0.1", 21037)) {</code></pre>
+      <p>
+        <code>new Socket(host, port)</code> opens a TCP connection. This is the
+        "active open" — your client reaches out to a server that is already listening.
+        The <code>try (...)</code> ensures the socket is closed when the block exits.
+        You will use this pattern for every backend client in the project.
+      </p>
+
+      <h3>The timeout</h3>
+      <pre><code>socket.setSoTimeout(3000);</code></pre>
+      <p>
+        Without a timeout, <code>read()</code> blocks forever if the server never
+        responds. Three seconds is generous for a local service. The gateway spec
+        requires 3-second timeouts on all backend connections. Get in the habit now.
+      </p>
+
+      <h3>Reading exactly four bytes</h3>
+      <pre><code>byte[] data = input.readNBytes(4);</code></pre>
+      <p>
+        <code>readNBytes(n)</code> keeps reading until it has <code>n</code> bytes
+        or hits EOF. This matters because TCP is a byte stream — a single
+        <code>read()</code> call might return 1, 2, 3, or 4 bytes depending on
+        how the OS delivered them. <code>readNBytes</code> handles the loop for you.
+        If the server closes early, you get fewer than 4 bytes, which is an error.
+      </p>
+
+      <h3>Decoding the value</h3>
+      <pre><code>int signed = ByteBuffer.wrap(data).getInt();
+long unsigned = Integer.toUnsignedLong(signed);</code></pre>
+      <p>
+        <code>ByteBuffer.getInt()</code> reads four bytes in big-endian order and
+        returns a Java <code>int</code>. But Java's <code>int</code> is signed,
+        and the protocol value is unsigned. The current RFC 868 value is over
+        2<sup>31</sup>, so the signed <code>int</code> is negative.
+        <code>Integer.toUnsignedLong()</code> reinterprets those same 32 bits as
+        an unsigned value in a <code>long</code>.
+      </p>
+      <p>
+        If you skip the unsigned conversion, you get a negative number, a negative
+        window, and a key that does not match what any other correctly-implemented
+        gateway produces. This is the kind of bug that passes a quick test ("I got
+        a number") but fails under real conditions.
+      </p>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Checkpoint:</strong> run <code>java TimeClient.java</code> with
+          the services running. You should see a positive unsigned value around
+          3.9 billion and a window number around 66 million. Run it twice a few
+          seconds apart — the window number should stay the same unless you happen
+          to cross a minute boundary. If the signed int is negative but the unsigned
+          long is positive, the conversion is working.
+        </p>
+      </div>
+
+      <details>
+        <summary>Why 1900 and not 1970?</summary>
+        <div>
+          <p>
+            RFC 868 was defined in 1983, inheriting the 1900 epoch from earlier
+            NTP-related work. Unix uses 1970. The difference is exactly
+            2,208,988,800 seconds. You do not need this constant in your client
+            because the gateway only uses the window number (seconds ÷ 60), not
+            a human-readable date. But if you want to verify your value, you can
+            subtract that constant and compare to <code>System.currentTimeMillis() / 1000</code>.
+          </p>
+        </div>
+      </details>
+
+      <details>
+        <summary>What if I want to test error handling?</summary>
+        <div>
+          <p>
+            Stop the Time service (kill the <code>start.sh</code> process) and run
+            your client again. You should get a <code>ConnectException</code>
+            ("Connection refused"). In the gateway, this will become a 502 response.
+            For now, just notice that the exception happens — you do not need to
+            handle it gracefully in this standalone client.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="whois">
+      <h2>Service 2: WHOIS</h2>
+      <p>
+        WHOIS is a text-based protocol. The client sends a query, the server sends
+        back a text record, and then the server closes the connection. Unlike Time,
+        the client does send data — one line of text. And unlike Time, the response
+        is variable-length; you read until the server closes its side (EOF).
+      </p>
+      <p>
+        The real WHOIS protocol (<a href="https://www.rfc-editor.org/rfc/rfc3912.html">RFC 3912</a>)
+        works exactly this way. The project's WHOIS server is a simplified version that
+        looks up user records instead of domain registrations, but the wire format is the same.
+      </p>
+    </section>
+
+    <section id="whois-wire">
+      <h3>The wire format</h3>
+      <div class="wire">
+        <span class="label">Client → Server</span>
+        <pre><code>alice\r\n</code></pre>
+        <span class="label">Server → Client (known user)</span>
+        <pre><code>UserID: alice
+Tier: REGISTERED
+(server closes the connection)</code></pre>
+        <span class="label">Server → Client (unknown user)</span>
+        <pre><code>No such domain: somebody
+(server closes the connection)</code></pre>
+      </div>
+      <p>
+        Key points:
+      </p>
+      <ul>
+        <li>The request is the user ID followed by <code>\r\n</code> (CRLF). Not just <code>\n</code>.</li>
+        <li>The response ends when the server closes the connection (EOF). There is no length
+            header and no delimiter marking the end of the record.</li>
+        <li>An unknown user is not an error — it is a successful lookup that returned
+            "not found." The gateway treats this as the DEFAULT tier.</li>
+        <li>The project spec limits the response to 8,192 bytes. Read no more than 8,193
+            — if you get that many, the response is too large and should be treated as a failure.</li>
+      </ul>
+
+      <h3>What to look for in the server source</h3>
+      <p>
+        Open <code>services/whois/WhoisServer.java</code> and read the <code>serve()</code>
+        method. Notice:
+      </p>
+      <ul>
+        <li>It reads one CRLF-terminated line as the query.</li>
+        <li>It looks for a file in <code>registry/</code> whose base name matches the query.</li>
+        <li>If found, it copies the file contents to the output stream. If not, it writes
+            <code>No such domain: ...</code>.</li>
+        <li>Either way, the connection closes when <code>serve()</code> exits.</li>
+      </ul>
+      <p>
+        Also look at the <code>registry/</code> directory. You will find files like
+        <code>alice.txt</code>. Open one. The records are short — a couple of lines
+        with <code>UserID:</code> and <code>Tier:</code> fields.
+      </p>
+    </section>
+
+    <section id="whois-client">
+      <h3>Building WhoisClient.java</h3>
+      <p>
+        Your goal: write a standalone <code>WhoisClient.java</code> that connects to
+        the WHOIS service on port 21043, sends a user ID, reads the complete response,
+        and prints both the raw text and the extracted tier.
+      </p>
+      <p>
+        This time, I am giving you the structure but not the complete code. You know
+        enough from the Time client to handle the connection, timeout, and try-with-resources.
+        The new challenges are:
+      </p>
+      <ol>
+        <li><strong>Sending a request.</strong> Get the socket's output stream and write
+            the user ID as ASCII bytes followed by <code>\r\n</code>. Flush the stream
+            so the bytes leave your process immediately.</li>
+        <li><strong>Reading until EOF.</strong> The response has no declared length. You
+            need to keep reading until <code>read()</code> returns -1.
+            A <code>ByteArrayOutputStream</code> is a convenient accumulator —
+            write each chunk to it, then convert to a string at the end.</li>
+        <li><strong>Extracting the tier.</strong> Split the response into lines.
+            Find one that starts with <code>Tier:</code> (case-insensitively).
+            The value after the colon is the tier.</li>
+      </ol>
+      <p>
+        Test it with at least three cases:
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>User ID</th><th>Expected result</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>alice</code></td><td>Tier: REGISTERED</td></tr>
+            <tr><td><code>nobody</code></td><td>"No such domain" → DEFAULT tier</td></tr>
+            <tr><td><code>registered-test</code></td><td>Check the registry file yourself</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout ai">
+        <p>
+          <strong>AI assist:</strong> if you are stuck on reading until EOF in Java,
+          try asking your AI assistant:
+        </p>
+        <p>
+          <em>"In Java, how do I read all bytes from a TCP socket's InputStream until
+          the server closes the connection? I need to accumulate the result into a
+          String. Show me using a byte array buffer and a ByteArrayOutputStream."</em>
+        </p>
+        <p>
+          A specific, technical question like this gets you a useful code pattern.
+          A vague question like "how do I do WHOIS in Java" will get you a library
+          recommendation that does not help you learn the protocol.
+        </p>
+      </div>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Checkpoint:</strong> your WhoisClient should print the full response
+          text and the extracted tier for each test case. For <code>alice</code>, you
+          should see <code>REGISTERED</code>. For <code>nobody</code>, you should see
+          the "No such domain" message and your code should treat it as <code>DEFAULT</code>.
+        </p>
+      </div>
+
+      <details>
+        <summary>Hint: sending the request</summary>
+        <div>
+<pre><code>OutputStream out = socket.getOutputStream();
+out.write("alice\r\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+out.flush();</code></pre>
+          <p>
+            Use ASCII, not UTF-8. The WHOIS protocol is ASCII. The difference rarely
+            matters for simple user IDs, but being precise about character encoding is
+            a habit that prevents bugs in Part 2 when you handle HTTP bodies.
+          </p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Hint: reading until EOF with a size limit</summary>
+        <div>
+<pre><code>ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+byte[] chunk = new byte[1024];
+int bytesRead;
+while ((bytesRead = input.read(chunk)) != -1) {
+    buffer.write(chunk, 0, bytesRead);
+    if (buffer.size() > 8192) {
+        throw new IOException("WHOIS response too large");
+    }
+}
+String response = buffer.toString(StandardCharsets.US_ASCII);</code></pre>
+          <p>
+            The <code>read(chunk)</code> call fills up to 1024 bytes and returns how
+            many it actually got. When the server closes the connection, it returns -1.
+            Check the accumulated size on each iteration so you do not read
+            an unbounded response into memory.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="redis">
+      <h2>Service 3: Redis RESP2</h2>
+      <p>
+        Redis uses a binary-safe protocol called RESP (REdis Serialization Protocol).
+        Unlike Time (fixed length, no request) and WHOIS (text lines, EOF-framed),
+        RESP uses <strong>type prefixes and explicit byte counts</strong> to frame
+        every message. This makes it more precise but also more demanding to
+        implement correctly.
+      </p>
+      <p>
+        The gateway only needs one Redis command: <code>INCR</code>. It atomically
+        increments a counter and returns the new value. Your standalone client will
+        do the same thing.
+      </p>
+    </section>
+
+    <section id="redis-wire">
+      <h3>The RESP2 wire format</h3>
+      <p>
+        Every RESP message is a sequence of lines ending in <code>\r\n</code>.
+        The first character of each line identifies the data type:
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Prefix</th><th>Type</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>+</code></td><td>Simple string</td><td><code>+OK\r\n</code></td></tr>
+            <tr><td><code>-</code></td><td>Error</td><td><code>-ERR unknown command\r\n</code></td></tr>
+            <tr><td><code>:</code></td><td>Integer</td><td><code>:42\r\n</code></td></tr>
+            <tr><td><code>$</code></td><td>Bulk string</td><td><code>$5\r\nhello\r\n</code></td></tr>
+            <tr><td><code>*</code></td><td>Array</td><td><code>*2\r\n...</code> (followed by 2 elements)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Commands are sent as arrays of bulk strings. Here is the <code>INCR mykey</code>
+        command on the wire:
+      </p>
+      <div class="wire">
+        <span class="label">Client → Server: INCR mykey</span>
+<pre><code>*2\r\n          ← array of 2 elements
+$4\r\n          ← bulk string, 4 bytes long
+INCR\r\n        ← the command name
+$5\r\n          ← bulk string, 5 bytes long
+mykey\r\n       ← the key</code></pre>
+        <span class="label">Server → Client</span>
+<pre><code>:1\r\n           ← integer reply: the new value after increment</code></pre>
+      </div>
+      <p>
+        The critical detail is that the number after <code>$</code> is the
+        <strong>byte length</strong> of the string that follows, not the number of
+        characters. For ASCII keys (which is all the gateway uses), byte length
+        and character count are the same. But the protocol defines it as bytes.
+      </p>
+      <p>
+        For your gateway key <code>usage:66000123:alice</code>, the bulk string
+        length would be 22 (the number of ASCII bytes in that string).
+      </p>
+
+      <h3>What to look for in the server source</h3>
+      <p>
+        Open <code>services/redis-resp/RedisRespServer.java</code>. This one is longer
+        than the other servers, but focus on:
+      </p>
+      <ul>
+        <li><code>readCommand()</code> — how the server parses an incoming RESP array of bulk strings.
+            Notice the <code>*</code> prefix, then repeated <code>$</code> length-prefixed values.</li>
+        <li><code>increment()</code> — the <code>INCR</code> handler. It uses <code>ConcurrentHashMap.compute()</code>
+            to atomically read, increment, and store the value. The response is written
+            with <code>writeInteger()</code>, which produces <code>:N\r\n</code>.</li>
+        <li><code>writeInteger()</code> and <code>writeBulkString()</code> — these show you
+            exactly how the server formats its replies.</li>
+      </ul>
+      <p>
+        Reading the server's parser is particularly useful here. You are building the
+        other side of the same conversation. The bytes your client sends must be exactly
+        what <code>readCommand()</code> expects to receive.
+      </p>
+    </section>
+
+    <section id="redis-client">
+      <h3>Building RedisClient.java</h3>
+      <p>
+        Your goal: write a standalone <code>RedisClient.java</code> that connects to
+        the Redis service on port 21379, sends an <code>INCR</code> command for a key
+        you choose, reads the integer reply, and prints the result. Run it several
+        times and watch the counter increase.
+      </p>
+      <p>
+        You are on your own for the structure this time. Here is what you need to figure out:
+      </p>
+      <ol>
+        <li><strong>Construct the RESP command.</strong> Build the <code>*2\r\n$4\r\nINCR\r\n$&lt;len&gt;\r\n&lt;key&gt;\r\n</code>
+            byte sequence. String concatenation works fine. Calculate the key's byte
+            length with <code>key.getBytes(StandardCharsets.US_ASCII).length</code>
+            (or just <code>key.length()</code> since the key is ASCII).</li>
+        <li><strong>Send it.</strong> Write the bytes to the output stream and flush.</li>
+        <li><strong>Read the reply.</strong> Read one CRLF-terminated line. The gateway
+            scaffold provides <code>readBackendLine()</code> for this — but since
+            this is a standalone program, write your own or adapt the pattern from
+            your WHOIS client. The reply will look like <code>:1</code> (after stripping
+            the CRLF).</li>
+        <li><strong>Parse the integer.</strong> Verify the first character is <code>:</code>.
+            Parse everything after it as a <code>long</code>.</li>
+      </ol>
+
+      <div class="callout ai">
+        <p>
+          <strong>AI assist:</strong> if the RESP2 encoding is confusing, try:
+        </p>
+        <p>
+          <em>"Explain the RESP2 wire format for sending a Redis INCR command.
+          Show me the exact bytes that cross the TCP connection, including the
+          array header, bulk string length prefixes, and CRLF terminators.
+          Use the key 'usage:100:alice' as an example."</em>
+        </p>
+        <p>
+          This kind of question — asking the AI to show you the bytes, not write
+          your code — teaches you the protocol. You can then write the code yourself
+          and know whether it is correct.
+        </p>
+      </div>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Checkpoint:</strong> run your RedisClient three times with the same
+          key. You should see the values 1, 2, 3 printed. If you restart the Redis
+          service (<code>start.sh</code>), the counter resets — the data is in-memory
+          only. Try a different key and confirm it starts at 1 independently.
+        </p>
+      </div>
+
+      <details>
+        <summary>Hint: building the RESP command as a string</summary>
+        <div>
+<pre><code>String key = "test:mykey";
+String command = "*2\r\n"
+    + "$4\r\n"
+    + "INCR\r\n"
+    + "$" + key.length() + "\r\n"
+    + key + "\r\n";</code></pre>
+          <p>
+            This works because the key is ASCII, so <code>key.length()</code> equals
+            the byte length. Convert to bytes with
+            <code>command.getBytes(StandardCharsets.US_ASCII)</code> before writing.
+          </p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Hint: reading a CRLF-terminated line</summary>
+        <div>
+          <p>
+            You need to read byte by byte until you see <code>\r</code> followed
+            by <code>\n</code>. Accumulate the non-CRLF bytes. This is the same
+            pattern the Redis server uses in its own <code>readLine()</code> method.
+            Look at it.
+          </p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Debugging: what if I get an error reply?</summary>
+        <div>
+          <p>
+            If the reply starts with <code>-</code> instead of <code>:</code>, the
+            server is telling you something is wrong. Print the full line. Common
+            causes:
+          </p>
+          <ul>
+            <li>Missing or wrong <code>*2\r\n</code> array header</li>
+            <li>Wrong byte count in a <code>$</code> length prefix</li>
+            <li>Missing <code>\r\n</code> after the key</li>
+            <li>Using <code>\n</code> instead of <code>\r\n</code></li>
+          </ul>
+          <p>
+            Compare what you are sending against what <code>readCommand()</code> in
+            the server source expects to parse. Byte for byte.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="wrapup">
+      <h2>What you've built</h2>
+      <p>
+        You now have three working TCP clients, each using a different wire protocol:
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Client</th><th>Protocol style</th><th>Request</th><th>Response framing</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>TimeClient</td>
+              <td>Binary, fixed-length</td>
+              <td>None</td>
+              <td>Exactly 4 bytes, then close</td>
+            </tr>
+            <tr>
+              <td>WhoisClient</td>
+              <td>Text, EOF-framed</td>
+              <td>One line + CRLF</td>
+              <td>Read until server closes</td>
+            </tr>
+            <tr>
+              <td>RedisClient</td>
+              <td>Binary-safe, length-prefixed</td>
+              <td>RESP array of bulk strings</td>
+              <td>Type-prefixed, CRLF-terminated</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        These three framing patterns — fixed-length, EOF-delimited, and length-prefixed —
+        are the fundamental strategies every application protocol uses to mark message
+        boundaries on a byte stream. HTTP, which you will handle in Part 2, uses a
+        combination of all three: a delimiter-framed header section, a length-declared
+        body, and connection close as a final signal.
+      </p>
+      <p>
+        More practically, the code you wrote in these clients is close to what you will
+        put into <code>currentWindow()</code>, <code>lookupTier()</code>, and
+        <code>increment()</code> in the gateway. When you get to those methods, you
+        will not be starting from scratch.
+      </p>
+      <div class="callout">
+        <p>
+          <strong>Next:</strong> Part 2 covers the gateway's HTTP layer — reading
+          requests, writing responses, and the validation rules that turn raw bytes
+          into a structured <code>IncomingRequest</code>. Look under Modules to find it.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>Computer Networks // Fall 2026 // P1 Tutorial Part 1 of 3</footer>
+
+</body>
+</html>

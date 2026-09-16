@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P1 Tutorial — Part 3: Wiring It Together</title>
+  <style>
+    :root {
+      --ink: #15242c;
+      --muted: #586a72;
+      --paper: #fbfaf5;
+      --navy: #102f3d;
+      --navy-deep: #09232f;
+      --blue: #176b87;
+      --cyan: #33a7b8;
+      --cyan-soft: #dff3f3;
+      --orange: #cf643d;
+      --orange-soft: #fae9e1;
+      --gold: #e1ad4c;
+      --gold-soft: #fff5dc;
+      --green: #2f7759;
+      --green-soft: #e3f1e9;
+      --red: #a84436;
+      --line: #d5d2c8;
+      --code-bg: #0d2834;
+      --white: #fffefb;
+      --shadow: 0 12px 30px rgb(16 47 61 / 8%);
+      --radius: 10px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+
+    a { color: var(--blue); text-underline-offset: 3px; }
+    code, pre { font-family: var(--mono); }
+    code {
+      padding: .12rem .34rem;
+      border-radius: 4px;
+      background: #e8eeeb;
+      font-size: .88em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 1rem 0;
+      padding: 1rem 1.2rem;
+      border-radius: var(--radius);
+      color: #e9f5f3;
+      background: var(--code-bg);
+      line-height: 1.55;
+      tab-size: 2;
+    }
+    pre code {
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      font-size: .84rem;
+    }
+
+    .page-header {
+      padding: 1.6rem 0;
+      border-bottom: 3px solid var(--gold);
+      color: white;
+      background: var(--navy);
+    }
+    .page-header-inner {
+      width: min(1080px, calc(100% - 2rem));
+      margin: auto;
+    }
+    .page-header small {
+      display: block;
+      margin-bottom: .25rem;
+      color: #98c5c7;
+      font: 700 .74rem var(--mono);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .page-header h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 500;
+      letter-spacing: -.02em;
+    }
+    .page-header p {
+      margin: .4rem 0 0;
+      color: #b8d5d7;
+      font-size: .95rem;
+    }
+
+    .page-layout {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 840px);
+      gap: 3rem;
+      width: min(1080px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 2.5rem 0 5rem;
+    }
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      padding: .8rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgb(251 250 245 / 95%);
+      box-shadow: var(--shadow);
+    }
+    nav strong {
+      display: block;
+      margin-bottom: .4rem;
+      color: var(--navy);
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    nav a {
+      display: block;
+      padding: .25rem .4rem;
+      border-left: 2px solid transparent;
+      color: var(--muted);
+      font-size: .82rem;
+      text-decoration: none;
+    }
+    nav a:hover { border-left-color: var(--blue); color: var(--blue); }
+
+    main { min-width: 0; }
+    section { margin-bottom: 3.5rem; scroll-margin-top: 1rem; }
+    h2 {
+      margin: 0 0 .8rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--line);
+      color: var(--navy);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.4rem, 3vw, 1.8rem);
+      font-weight: 500;
+      letter-spacing: -.015em;
+    }
+    h3 {
+      margin: 1.8rem 0 .4rem;
+      color: var(--navy);
+      font-size: 1.05rem;
+    }
+    p { margin: .5rem 0 .9rem; }
+    ul, ol { padding-left: 1.3rem; }
+    li + li { margin-top: .3rem; }
+
+    .callout {
+      margin: 1.2rem 0;
+      padding: .9rem 1.1rem;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: var(--radius);
+      background: var(--cyan-soft);
+    }
+    .callout p:first-child { margin-top: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .callout strong:first-child { color: var(--blue); }
+    .callout.checkpoint {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+    .callout.checkpoint strong:first-child { color: var(--green); }
+    .callout.ai {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+    .callout.ai strong:first-child { color: #805811; }
+    .callout.warning {
+      border-left-color: var(--orange);
+      background: var(--orange-soft);
+    }
+    .callout.warning strong:first-child { color: #8f4026; }
+
+    .wire {
+      margin: 1rem 0;
+      padding: .9rem 1.1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+    .wire pre {
+      margin: .5rem 0;
+      background: #1a3a48;
+    }
+    .wire .label {
+      display: block;
+      margin-bottom: .3rem;
+      color: var(--muted);
+      font: 700 .7rem var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: .65rem .8rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: white;
+      background: var(--navy);
+      font-size: .73rem;
+      letter-spacing: .03em;
+    }
+    td { font-size: .88rem; }
+    tr:last-child td { border-bottom: 0; }
+
+    details {
+      margin: 1rem 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      overflow: hidden;
+    }
+    summary {
+      padding: .7rem .9rem;
+      color: var(--navy);
+      background: #f3f1ea;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: .9rem;
+    }
+    details[open] summary { border-bottom: 1px solid var(--line); }
+    details > div { padding: .8rem 1rem; }
+    details pre { margin: .5rem 0; }
+    details p:first-child { margin-top: 0; }
+
+    footer {
+      padding: 1.2rem;
+      color: #c4d8da;
+      background: var(--navy-deep);
+      text-align: center;
+      font-size: .82rem;
+    }
+
+    @media (max-width: 860px) {
+      .page-layout { display: block; }
+      nav { position: static; margin-bottom: 2rem; columns: 2; }
+      nav strong { column-span: all; }
+    }
+    @media (max-width: 480px) {
+      .page-layout { width: min(100% - 1.2rem, 1080px); }
+      nav { columns: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media print {
+      body { color: black; background: white; font-size: 10pt; }
+      .page-header { color: black; background: white; border-bottom: 2px solid black; }
+      .page-header small, .page-header p { color: #333; }
+      nav { display: none; }
+      .page-layout { display: block; width: 100%; padding: 1rem 0; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid #999; color: black; background: #f0f0f0; }
+      .callout, .wire, details, .table-wrap { box-shadow: none; break-inside: avoid; }
+      footer { color: black; background: white; border-top: 1px solid black; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <small>P1 Tutorial // Part 3 of 3</small>
+    <h1>Wiring It Together</h1>
+    <p>Move your clients into the gateway, add concurrency, and complete serve().</p>
+  </div>
+</header>
+
+<div class="page-layout">
+  <nav aria-label="Page contents">
+    <strong>Part 3</strong>
+    <a href="#overview">Where you are</a>
+    <a href="#transplant">Transplanting clients</a>
+    <a href="#currentwindow">currentWindow</a>
+    <a href="#lookuptier">lookupTier</a>
+    <a href="#increment">increment</a>
+    <a href="#serve">The serve method</a>
+    <a href="#routing">Routing</a>
+    <a href="#time-key">Time and key</a>
+    <a href="#fanout">Concurrent fan-out</a>
+    <a href="#decision">The decision</a>
+    <a href="#fllm">Calling the fLLM</a>
+    <a href="#testing">Testing</a>
+    <a href="#concurrency">Concurrency testing</a>
+    <a href="#done">Completion</a>
+  </nav>
+
+  <main>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="overview">
+      <h2>Where you are</h2>
+      <p>
+        You have three working standalone clients (Part 1) and a gateway that can parse
+        HTTP requests and write HTTP responses (Part 2). The remaining work is:
+      </p>
+      <ol>
+        <li>Move the standalone client logic into the gateway's <code>currentWindow()</code>,
+            <code>lookupTier()</code>, and <code>increment()</code> methods.</li>
+        <li>Implement <code>serve()</code> to orchestrate the full request flow: routing,
+            backend calls, the rate-limit decision, and the fLLM call.</li>
+      </ol>
+      <p>
+        If you tested each piece in isolation as the earlier parts suggested, this
+        should feel like assembly rather than invention.
+      </p>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="transplant">
+      <h2>Transplanting your clients</h2>
+      <p>
+        Your standalone clients were complete programs with <code>main()</code>,
+        <code>System.out.println()</code>, and their own socket management. The
+        gateway methods have a narrower contract: take the inputs, do the network
+        call, return the result, and throw <code>IOException</code> on failure.
+        No printing. No <code>main()</code>.
+      </p>
+      <p>
+        For each method:
+      </p>
+      <ul>
+        <li>Keep the socket open/send/receive/close logic.</li>
+        <li>Replace <code>println()</code> calls with a <code>return</code> statement.</li>
+        <li>Let exceptions propagate — <code>serve()</code> will catch them and return 502.</li>
+        <li>Use <code>try-with-resources</code> for the socket so it closes on every path.</li>
+        <li>Set a 3-second socket timeout, as the spec requires.</li>
+      </ul>
+    </section>
+
+    <section id="currentwindow">
+      <h3>currentWindow()</h3>
+      <p>
+        This is a near-direct copy of your <code>TimeClient</code>. The method takes no
+        arguments and returns a <code>long</code>: the window number.
+      </p>
+<pre><code>private static long currentWindow() throws IOException</code></pre>
+      <p>
+        Your standalone client already does:
+      </p>
+      <ol>
+        <li>Connect to <code>127.0.0.1:21037</code></li>
+        <li>Read exactly 4 bytes</li>
+        <li>Decode as unsigned big-endian</li>
+        <li>Divide by <code>SECONDS_PER_WINDOW</code></li>
+      </ol>
+      <p>
+        Copy that logic in. Return the window number. If fewer than 4 bytes arrive,
+        throw an <code>IOException</code>. The constants <code>BACKEND_HOST</code>,
+        <code>TIME_PORT</code>, and <code>SECONDS_PER_WINDOW</code> are already
+        defined in the gateway.
+      </p>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Checkpoint:</strong> temporarily add a <code>main</code> method or
+          a test call in <code>serve()</code> that calls <code>currentWindow()</code>
+          and prints the result. Confirm it matches what your standalone
+          <code>TimeClient</code> produces.
+        </p>
+      </div>
+    </section>
+
+    <section id="lookuptier">
+      <h3>lookupTier()</h3>
+<pre><code>private static Tier lookupTier(String userId) throws IOException</code></pre>
+      <p>
+        Adapt your <code>WhoisClient</code>. The method takes a user ID and returns
+        a <code>Tier</code> enum value (<code>Tier.DEFAULT</code> or <code>Tier.REGISTERED</code>).
+      </p>
+      <p>
+        The differences from your standalone client:
+      </p>
+      <ul>
+        <li>The user ID comes from the parameter, not hardcoded.</li>
+        <li>Return a <code>Tier</code> value, not a string.</li>
+        <li>A "No such domain" response maps to <code>Tier.DEFAULT</code> — this is
+            not an error.</li>
+        <li>A record with no <code>Tier:</code> field or an unrecognized tier value
+            is malformed — throw an <code>IOException</code>.</li>
+        <li>Enforce the 8,192-byte response limit.</li>
+      </ul>
+
+      <div class="callout warning">
+        <p>
+          <strong>Case sensitivity:</strong> the spec says to match the <code>Tier:</code>
+          field name and the tier value case-insensitively. A record containing
+          <code>tier: registered</code> is valid and maps to <code>Tier.REGISTERED</code>.
+          Use <code>equalsIgnoreCase()</code> or convert to uppercase before comparing.
+        </p>
+      </div>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Checkpoint:</strong> test with <code>"alice"</code> (should return
+          <code>REGISTERED</code>), <code>"nobody"</code> (should return <code>DEFAULT</code>),
+          and <code>"registered-test"</code> (check the registry file to know what
+          to expect).
+        </p>
+      </div>
+    </section>
+
+    <section id="increment">
+      <h3>increment()</h3>
+<pre><code>private static long increment(String key) throws IOException</code></pre>
+      <p>
+        Adapt your <code>RedisClient</code>. The method takes a key string and
+        returns the new counter value as a <code>long</code>.
+      </p>
+      <p>
+        The key will look like <code>usage:66000123:alice</code> — you build it in
+        <code>serve()</code>, not here. This method just sends the <code>INCR</code>
+        command for whatever key it receives.
+      </p>
+      <p>
+        Reminder of the RESP encoding:
+      </p>
+<pre><code>*2\r\n$4\r\nINCR\r\n$&lt;key-byte-length&gt;\r\n&lt;key&gt;\r\n</code></pre>
+      <p>
+        For reading the reply, the gateway already provides <code>readBackendLine()</code>.
+        Use it instead of writing your own line reader:
+      </p>
+<pre><code>String reply = readBackendLine(socket.getInputStream());
+if (!reply.startsWith(":")) {
+    throw new IOException("Unexpected Redis reply: " + reply);
+}
+return Long.parseLong(reply.substring(1));</code></pre>
+      <p>
+        Wrap the <code>Long.parseLong()</code> in a try-catch for
+        <code>NumberFormatException</code> and convert it to an <code>IOException</code>
+        if it fails.
+      </p>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Checkpoint:</strong> call <code>increment("test:manual")</code> three
+          times and confirm you get 1, 2, 3. If you restart the services, the counter
+          resets.
+        </p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="serve">
+      <h2>The serve method</h2>
+      <p>
+        <code>serve()</code> is where everything comes together. Look at what the scaffold
+        already provides:
+      </p>
+<pre><code>private static void serve(Socket client, ExecutorService backends, FakeLLMClient fllm) {
+    try {
+        client.setSoTimeout(5_000);
+        IncomingRequest request = readRequest(client.getInputStream());
+
+        // Your code goes here.
+
+    } catch (RequestException exception) {
+        writeSafely(client, 400, "Bad Request", exception.getMessage() + "\n");
+    } catch (Exception exception) {
+        System.err.println("Gateway request failed: " + exception.getMessage());
+        writeSafely(client, 502, "Bad Gateway", "A backend service failed.\n");
+    } finally {
+        try { client.close(); } catch (IOException ignored) { }
+    }
+}</code></pre>
+      <p>
+        The scaffold handles:
+      </p>
+      <ul>
+        <li>Setting the client socket timeout.</li>
+        <li>Calling <code>readRequest()</code> (your Part 2 work).</li>
+        <li>Catching <code>RequestException</code> and returning 400.</li>
+        <li>Catching any other exception and returning 502.</li>
+        <li>Closing the client socket in <code>finally</code>.</li>
+      </ul>
+      <p>
+        Your code fills the middle. It runs in order: routing, time, key construction,
+        concurrent fan-out, decision, and response.
+      </p>
+    </section>
+
+    <section id="routing">
+      <h3>Step 1: Routing</h3>
+      <p>
+        Before contacting any backend, check the method and path. This goes
+        immediately after <code>readRequest()</code>:
+      </p>
+<pre><code>if (!request.path().equals("/chat")) {
+    writeResponse(client.getOutputStream(), 404, "Not Found", "Not found.\n");
+    return;
+}
+if (!request.method().equals("POST")) {
+    writeResponse(client.getOutputStream(), 405, "Method Not Allowed",
+        "Use POST for /chat.\n", Map.of("Allow", "POST"));
+    return;
+}</code></pre>
+      <p>
+        Order matters: check the path first, then the method. A <code>GET /other</code>
+        is a 404 (wrong path), not a 405 (wrong method on the right path).
+      </p>
+    </section>
+
+    <section id="time-key">
+      <h3>Step 2: Time and key construction</h3>
+      <p>
+        Get the current window and build the Redis key:
+      </p>
+<pre><code>String userId = request.headers().get("x-user-id");
+long window = currentWindow();
+String key = "usage:" + window + ":" + userId;</code></pre>
+      <p>
+        Time must complete before you can submit the Redis call because the window
+        number is part of the key.
+      </p>
+    </section>
+
+    <section id="fanout">
+      <h3>Step 3: Concurrent WHOIS and Redis</h3>
+      <p>
+        WHOIS and Redis do not depend on each other. The spec requires them to run
+        concurrently. Use the <code>backends</code> executor to submit both tasks
+        before waiting for either result:
+      </p>
+<pre><code>var tierFuture = backends.submit(() -&gt; lookupTier(userId));
+var attemptFuture = backends.submit(() -&gt; increment(key));</code></pre>
+      <p>
+        Both tasks are now running on virtual threads. Now wait for the results:
+      </p>
+<pre><code>Tier tier;
+long attempt;
+try {
+    tier = tierFuture.get();
+    attempt = attemptFuture.get();
+} catch (ExecutionException e) {
+    tierFuture.cancel(true);
+    attemptFuture.cancel(true);
+    throw new IOException("Backend call failed", e.getCause());
+} catch (InterruptedException e) {
+    tierFuture.cancel(true);
+    attemptFuture.cancel(true);
+    Thread.currentThread().interrupt();
+    throw new IOException("Backend call interrupted", e);
+}</code></pre>
+
+      <div class="callout warning">
+        <p>
+          <strong>Submit both before waiting.</strong> If you write
+          <code>tierFuture.get()</code> before submitting the Redis task,
+          the calls are sequential, not concurrent. The whole point of using
+          <code>Future</code> objects is to start both operations and then
+          collect the results.
+        </p>
+      </div>
+
+      <div class="callout">
+        <p>
+          <strong>Why cancel both?</strong> If the WHOIS call fails, the Redis
+          call may still be running. Cancelling it avoids wasting resources on
+          a result you will never use. The same applies in reverse. Cancellation
+          is best-effort — the Redis INCR may have already completed — but
+          that is fine. The spec says no rollback is required.
+        </p>
+      </div>
+
+      <details>
+        <summary>Why restore the interrupt status?</summary>
+        <div>
+          <p>
+            When <code>Future.get()</code> throws <code>InterruptedException</code>,
+            Java has already cleared the current thread's interrupt flag. Calling
+            <code>Thread.currentThread().interrupt()</code> sets it again so that
+            code higher in the call stack — such as the virtual thread executor —
+            can detect that this thread was interrupted. Swallowing interrupts
+            silently is a common concurrency bug.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section id="decision">
+      <h3>Step 4: The rate-limit decision</h3>
+      <p>
+        Compare the attempt number (from Redis) against the limit for the tier
+        (from WHOIS):
+      </p>
+<pre><code>long limit = (tier == Tier.REGISTERED) ? REGISTERED_LIMIT : DEFAULT_LIMIT;
+if (attempt &gt; limit) {
+    writeResponse(client.getOutputStream(), 429, "Too Many Requests",
+        "Rate limit exceeded for " + userId + ".\n");
+    return;
+}</code></pre>
+      <p>
+        The constants <code>DEFAULT_LIMIT</code> (3) and <code>REGISTERED_LIMIT</code>
+        (10) are already defined in the gateway. The INCR return value is the attempt
+        number: 1 for the first request, 2 for the second, and so on. When it exceeds
+        the limit, deny.
+      </p>
+    </section>
+
+    <section id="fllm">
+      <h3>Step 5: Call the fLLM and respond</h3>
+      <p>
+        If the request is allowed, forward the query to the fLLM and return its
+        response:
+      </p>
+<pre><code>String query = new String(request.body(), StandardCharsets.UTF_8);
+String answer = fllm.query(query);
+writeResponse(client.getOutputStream(), 200, "OK", answer + "\n");</code></pre>
+      <p>
+        <code>fllm.query()</code> can throw <code>IOException</code> or
+        <code>InterruptedException</code>. Both are caught by the existing
+        <code>catch (Exception)</code> block in the scaffold, which returns 502.
+        You do not need additional error handling here.
+      </p>
+
+      <div class="callout warning">
+        <p>
+          <strong>Do not call the fLLM for denied requests.</strong> The entire purpose
+          of the gateway is to protect this resource. If the attempt exceeds the limit,
+          you must return 429 and stop. The fLLM should never see a denied request.
+        </p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="testing">
+      <h2>Testing</h2>
+      <p>
+        Start the services and the gateway. Test the complete flow:
+      </p>
+
+      <h3>Basic success</h3>
+<pre><code>curl -i -X POST \
+  -H "X-User-ID: alice" \
+  -H "Content-Type: text/plain" \
+  --data "How are you today?" \
+  http://127.0.0.1:8080/chat</code></pre>
+      <p>
+        Expected: 200 OK with an ELIZA-style response. Alice is registered with a
+        limit of 10, so the first request should always succeed.
+      </p>
+
+      <h3>Default caller rate limit</h3>
+      <p>
+        Use an unknown user ID and send four requests. The first three should return
+        200, and the fourth should return 429:
+      </p>
+<pre><code>for i in 1 2 3 4; do
+  echo "--- Request $i ---"
+  curl -s -o /dev/null -w "HTTP %{http_code}\n" -X POST \
+    -H "X-User-ID: test-$RANDOM" \
+    -H "Content-Type: text/plain" \
+    --data "Hello" \
+    http://127.0.0.1:8080/chat
+done</code></pre>
+      <p>
+        The <code>test-$RANDOM</code> user ID uses the shell's process ID to create a
+        fresh user each time you run the script, so previous test runs do not
+        affect the count. You should see:
+      </p>
+<pre><code>--- Request 1 ---
+HTTP 200
+--- Request 2 ---
+HTTP 200
+--- Request 3 ---
+HTTP 200
+--- Request 4 ---
+HTTP 429</code></pre>
+
+      <div class="callout warning">
+        <p>
+          <strong>Window boundaries:</strong> the 60-second window is based on the Time
+          service's clock. If you run this test right at a minute boundary, the window
+          might roll over mid-test and the counter resets. If you see 200 where you
+          expected 429, wait a few seconds and try again with a fresh user ID.
+        </p>
+      </div>
+
+      <h3>Error cases</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Test</th><th>Expected</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Missing <code>X-User-ID</code> header</td><td>400</td></tr>
+            <tr><td><code>GET /chat</code></td><td>405 with <code>Allow: POST</code></td></tr>
+            <tr><td><code>POST /other</code></td><td>404</td></tr>
+            <tr><td>Empty body (<code>--data ""</code>)</td><td>400</td></tr>
+            <tr><td>Stop the Time service, then send a request</td><td>502</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Checkpoint:</strong> every row in that table should produce the
+          expected status code. If the 502 test does not work, check that your
+          <code>currentWindow()</code> lets the <code>IOException</code> propagate
+          to the <code>catch (Exception)</code> block in <code>serve()</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="concurrency">
+      <h2>Concurrency testing</h2>
+      <p>
+        The hardest requirement is that the rate limit holds under concurrent load.
+        If three default-tier requests arrive at the same time, exactly three should
+        be allowed — not four or five.
+      </p>
+      <p>
+        This test sends 6 concurrent requests for the same default user and checks
+        that exactly 3 receive 200 and exactly 3 receive 429:
+      </p>
+<pre><code>USER="burst-$$"
+for i in $(seq 1 6); do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+    -H "X-User-ID: $USER" \
+    -H "Content-Type: text/plain" \
+    --data "Hello" \
+    http://127.0.0.1:8080/chat &amp;
+done
+wait</code></pre>
+      <p>
+        The <code>&amp;</code> runs each curl in the background. <code>wait</code>
+        blocks until all of them finish. You should see three <code>200</code> lines
+        and three <code>429</code> lines, in some order. The order does not matter —
+        concurrency means you cannot predict which specific requests arrive first.
+        But the <em>count</em> must be exactly right.
+      </p>
+
+      <div class="callout">
+        <p>
+          <strong>Why this works:</strong> Redis <code>INCR</code> is atomic. Each
+          of the 6 concurrent requests gets a unique attempt number (1 through 6).
+          The requests with attempt numbers 1, 2, 3 are allowed. The requests with
+          4, 5, 6 are denied. No local counter or synchronization in your gateway
+          code is needed — the correctness comes from using a single atomic
+          operation on the Redis server.
+        </p>
+      </div>
+
+      <div class="callout ai">
+        <p>
+          <strong>AI assist:</strong> if concurrency is not working correctly, try:
+        </p>
+        <p>
+          <em>"In my Java gateway, I submit two Callable tasks to an ExecutorService
+          using submit(), then call get() on both futures. But the tasks seem to
+          run sequentially. What are common reasons for this, and how can I verify
+          they actually overlap?"</em>
+        </p>
+        <p>
+          If your WHOIS and Redis calls are sequential, the gateway still produces
+          correct results, but you are not meeting the concurrency requirement. Adding
+          a log line with a timestamp at the start and end of each backend call can
+          help you see whether they overlap.
+        </p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="done">
+      <h2>Completion</h2>
+      <p>
+        If all the tests above pass, review the
+        <a href="PROMPT.md">completion checklist in Section 15 of the project spec</a>.
+        The checklist has 14 items. Walk through each one and confirm your gateway
+        satisfies it. The important ones that are easy to miss:
+      </p>
+      <ul>
+        <li><strong>CRLF everywhere.</strong> Both request parsing and response writing
+            must use <code>\r\n</code>. A bare <code>\n</code> in your response headers
+            will break compliant clients.</li>
+        <li><strong>Content-Length is byte length.</strong> Not character length.
+            If your <code>writeResponse</code> uses <code>body.length()</code> instead
+            of the UTF-8 byte array length, it is wrong for any non-ASCII body.</li>
+        <li><strong>Sockets close on all paths.</strong> Backend sockets should use
+            try-with-resources. The client socket is closed in the <code>finally</code>
+            block that the scaffold provides.</li>
+        <li><strong>WHOIS and Redis are concurrent.</strong> Both futures must be
+            submitted before either <code>.get()</code> is called.</li>
+        <li><strong>Denied requests do not call the fLLM.</strong> Return 429 immediately.</li>
+        <li><strong>Invalid requests do not call any backend.</strong> If
+            <code>readRequest()</code> throws, the scaffold catches it and returns 400.
+            No Time, WHOIS, Redis, or fLLM call happens.</li>
+      </ul>
+
+      <div class="callout checkpoint">
+        <p>
+          <strong>Final checkpoint:</strong> run the complete test sequence: a valid
+          request, a malformed request, a 404, a 405, the rate-limit sequence (3
+          allowed then denied), and the 6-request concurrency burst. If all of those
+          work, you are done.
+        </p>
+      </div>
+
+      <p>
+        The gateway is a small program, but it exercises the full range of skills
+        this module is about: raw byte-stream framing, multiple wire protocols,
+        concurrent network I/O, and a correct decision under load. Every method you
+        wrote has a clear role in that chain. If something breaks later, you know
+        exactly which piece to investigate because you built and tested each one
+        independently.
+      </p>
+    </section>
+
+  </main>
+</div>
+
+<footer>Computer Networks // Fall 2026 // P1 Tutorial Part 3 of 3</footer>
+
+</body>
+</html>
