@@ -42,4 +42,4 @@ printf '  Redis:  127.0.0.1:%s\n' "$REDIS_PORT"
 printf '  fLLM:   http://127.0.0.1:%s/v1/chat/completions\n' "$FLLM_PORT"
 printf 'Press Ctrl-C to stop all services.\n'
 
-wait -n "${PIDS[@]}"
+wait

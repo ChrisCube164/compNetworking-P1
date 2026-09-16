@@ -90,10 +90,11 @@ public class Gateway {
     private static void serve(Socket client, ExecutorService backends, FakeLLMClient fllm) {
         try {
             client.setSoTimeout(5_000);
-            IncomingRequest request = readRequest(client.getInputStream());
+            //temp remove IncomingRequest request = readRequest(client.getInputStream());
 
             // Use request, backends, and fllm to implement the behavior above.
-            throw new UnsupportedOperationException("TODO: implement serve");
+          // temp remove throw new UnsupportedOperationException("TODO: implement serve");
+            writeResponse(client.getOutputStream(), 200, "OK", "Gateway is alive\n");
         } catch (RequestException exception) {
             writeSafely(client, 400, "Bad Request", exception.getMessage() + "\n");
         } catch (Exception exception) {
@@ -218,7 +219,25 @@ public class Gateway {
     //
     private static void writeResponse(OutputStream output, int status, String reason, String body,
                                        Map<String, String> extraHeaders) throws IOException {
-        throw new UnsupportedOperationException("TODO: implement writeResponse");
+        //throw new UnsupportedOperationException("TODO: implement writeResponse");
+        byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
+
+        StringBuilder header = new StringBuilder();
+
+        header.append("HTTP/1.1 ").append(status).append(" ").append(reason).append("\r\n");
+        header.append("Content-Type: text/plain; charset=utf-8\r\n");
+        header.append("Content-Length: ").append(bodyBytes.length).append("\r\n");
+        header.append("Connection: close\r\n");
+
+        for (var entry : extraHeaders.entrySet()) {
+            header.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
+        }
+
+        header.append("\r\n");
+
+        output.write(header.toString().getBytes());
+        output.write(bodyBytes);
+
     }
 
     //`````````````````````````````````````````````````````````````````````
