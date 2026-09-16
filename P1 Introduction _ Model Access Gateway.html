@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An introduction to Project P1: a concurrent Java gateway that meters access to a model service.">
+  <title>P1 Introduction | Model Access Gateway</title>
+  <style>
+    :root {
+      --ink: #15242c;
+      --muted: #586a72;
+      --paper: #fbfaf5;
+      --paper-deep: #efede4;
+      --navy: #102f3d;
+      --navy-deep: #09232f;
+      --blue: #176b87;
+      --cyan: #33a7b8;
+      --cyan-soft: #dff3f3;
+      --orange: #cf643d;
+      --orange-soft: #fae9e1;
+      --gold: #e1ad4c;
+      --gold-soft: #fff5dc;
+      --green: #2f7759;
+      --green-soft: #e3f1e9;
+      --red: #a84436;
+      --line: #d5d2c8;
+      --code: #0d2834;
+      --white: #fffefb;
+      --shadow: 0 18px 45px rgb(16 47 61 / 10%);
+      --radius: 16px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgb(23 107 135 / 3%) 1px, transparent 1px),
+        linear-gradient(rgb(23 107 135 / 3%) 1px, transparent 1px),
+        var(--paper);
+      background-size: 30px 30px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: var(--blue); text-underline-offset: 3px; }
+    code, pre, .eyebrow, .kicker, .pill, .tag, .wire-label, .meter-label { font-family: var(--mono); }
+    code { padding: .12rem .34rem; border-radius: 5px; background: #e8eeeb; font-size: .9em; }
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 1.15rem 1.3rem;
+      color: #e9f5f3;
+      background: var(--code);
+      line-height: 1.55;
+      tab-size: 2;
+    }
+    pre code { padding: 0; color: inherit; background: transparent; font-size: .84rem; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 650px;
+      color: white;
+      background:
+        radial-gradient(circle at 78% 40%, rgb(51 167 184 / 20%), transparent 24rem),
+        linear-gradient(135deg, var(--navy-deep), var(--navy));
+      border-bottom: 7px solid var(--gold);
+    }
+    .hero::before {
+      position: absolute;
+      inset: 0;
+      content: "";
+      opacity: .4;
+      background-image:
+        radial-gradient(circle, rgb(255 255 255 / 55%) 0 1px, transparent 1.3px),
+        radial-gradient(circle, rgb(255 255 255 / 22%) 0 1px, transparent 1.3px);
+      background-position: 0 0, 27px 41px;
+      background-size: 79px 79px, 113px 113px;
+    }
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(350px, .92fr);
+      align-items: center;
+      gap: 4rem;
+      width: min(1180px, calc(100% - 2rem));
+      min-height: 650px;
+      margin: auto;
+      padding: 4.5rem 0;
+    }
+    .eyebrow {
+      margin: 0 0 .85rem;
+      color: #98e2e4;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { line-height: 1.16; }
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(3rem, 6.4vw, 6.15rem);
+      font-weight: 500;
+      letter-spacing: -.045em;
+    }
+    .hero h1 span { display: block; color: #a8e5e3; }
+    .hero .lede {
+      max-width: 680px;
+      margin: 1.35rem 0 1.6rem;
+      color: #d6e8e9;
+      font-size: clamp(1.05rem, 2vw, 1.24rem);
+    }
+    .meta { display: flex; flex-wrap: wrap; gap: .55rem; }
+    .pill {
+      padding: .35rem .68rem;
+      border: 1px solid rgb(255 255 255 / 23%);
+      border-radius: 999px;
+      background: rgb(255 255 255 / 6%);
+      font-size: .76rem;
+      font-weight: 750;
+    }
+    .hero-claim {
+      max-width: 650px;
+      margin-top: 2rem;
+      padding: 1rem 1.1rem;
+      border-left: 4px solid var(--gold);
+      color: #f4f0df;
+      background: rgb(255 255 255 / 6%);
+    }
+    .hero-claim strong { color: white; }
+
+    .meter-console {
+      overflow: hidden;
+      border: 1px solid rgb(255 255 255 / 20%);
+      border-radius: var(--radius);
+      background: rgb(4 24 33 / 82%);
+      box-shadow: 0 28px 65px rgb(0 0 0 / 28%);
+    }
+    .console-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: .75rem .9rem;
+      border-bottom: 1px solid rgb(255 255 255 / 10%);
+      color: #a8ced0;
+      font: .69rem var(--mono);
+      letter-spacing: .05em;
+    }
+    .live-dot {
+      display: inline-block;
+      width: .62rem;
+      height: .62rem;
+      margin-right: .42rem;
+      border-radius: 50%;
+      background: #69cf9a;
+      box-shadow: 0 0 0 4px rgb(105 207 154 / 12%);
+    }
+    .console-body { padding: 1.35rem; }
+    .identity-row { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
+    .meter-label { color: #93dadd; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
+    .identity-row strong { display: block; margin-top: .2rem; font-family: Georgia, serif; font-size: 1.7rem; font-weight: 500; }
+    .tier-badge { padding: .3rem .55rem; border-radius: 999px; color: #102f3d; background: var(--gold); font: 800 .66rem var(--mono); }
+    .usage-track { display: grid; grid-template-columns: repeat(4, 1fr); gap: .55rem; margin: 1.4rem 0; }
+    .usage-slot { height: 52px; border: 1px solid rgb(255 255 255 / 15%); border-radius: 8px; background: rgb(255 255 255 / 4%); }
+    .usage-slot.used { background: linear-gradient(145deg, #277e91, #1b5d70); }
+    .usage-slot.blocked { position: relative; border-color: rgb(207 100 61 / 60%); background: rgb(207 100 61 / 12%); }
+    .usage-slot.blocked::after { display: grid; height: 100%; place-items: center; color: #f29b7a; content: "LIMIT"; font: 800 .6rem var(--mono); }
+    .decision-log { display: grid; gap: .55rem; }
+    .log-row { display: grid; grid-template-columns: 78px 1fr auto; gap: .65rem; align-items: center; padding: .58rem .65rem; border-radius: 7px; background: rgb(255 255 255 / 5%); font: .7rem var(--mono); }
+    .log-row span:first-child { color: #91b7bc; }
+    .log-row b { color: #dceced; font-weight: 500; }
+    .log-row em { color: #76d8a2; font-style: normal; font-weight: 800; }
+    .log-row.deny em { color: #f29b7a; }
+    .console-foot { margin: 0; padding: .8rem 1rem; border-top: 1px solid rgb(255 255 255 / 10%); color: #bdd3d5; background: rgb(255 255 255 / 3%); font-size: .78rem; text-align: center; }
+
+    .page-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 880px);
+      gap: 3.4rem;
+      width: min(1180px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 3rem 0 6rem;
+    }
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgb(251 250 245 / 95%);
+      box-shadow: var(--shadow);
+    }
+    nav strong { display: block; margin-bottom: .55rem; color: var(--navy); font-size: .73rem; letter-spacing: .1em; text-transform: uppercase; }
+    nav a { display: block; padding: .3rem .4rem; border-left: 2px solid transparent; color: var(--muted); font-size: .85rem; text-decoration: none; }
+    nav a:hover { border-left-color: var(--orange); color: var(--orange); }
+    main { min-width: 0; }
+    section { margin-bottom: 4.8rem; scroll-margin-top: 1rem; }
+    h2 { margin: 0 0 1.15rem; color: var(--navy); font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 500; letter-spacing: -.025em; }
+    h3 { margin: 1.7rem 0 .55rem; color: var(--navy); font-size: 1.12rem; }
+    p { margin: .6rem 0 1rem; }
+    ul, ol { padding-left: 1.3rem; }
+    li + li { margin-top: .35rem; }
+    .kicker { margin: 0 0 .55rem; color: var(--orange); font-size: .74rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .section-lede { max-width: 780px; color: var(--muted); font-size: 1.08rem; }
+
+    .card, .callout, .brief, .table-wrap, details {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: 0 9px 25px rgb(16 47 61 / 6%);
+    }
+    .brief { display: grid; grid-template-columns: .8fr 1.3fr; overflow: hidden; margin-top: 1.5rem; }
+    .brief-signal { display: grid; align-content: center; min-height: 250px; padding: 2rem; color: white; background: linear-gradient(rgb(255 255 255 / 5%) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 5%) 1px, transparent 1px), var(--navy); background-size: 22px 22px; }
+    .brief-signal small { color: #a8e5e3; font-family: var(--mono); letter-spacing: .08em; }
+    .brief-signal strong { display: block; margin: .2rem 0; font-family: Georgia, serif; font-size: 2.55rem; font-weight: 500; }
+    .brief-copy { padding: 1.8rem 2rem; }
+    .brief-copy blockquote { margin: .6rem 0 1.2rem; color: var(--navy); font-family: Georgia, serif; font-size: 1.42rem; line-height: 1.4; }
+
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { padding: 1.15rem 1.25rem; }
+    .card h3 { margin-top: .1rem; }
+    .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+    .card-mark { display: inline-grid; min-width: 2.25rem; height: 2.25rem; place-items: center; margin-bottom: .7rem; padding: 0 .4rem; border-radius: 8px; color: white; background: var(--blue); font: 800 .7rem var(--mono); }
+    .card-mark.orange { background: var(--orange); }
+    .card-mark.green { background: var(--green); }
+    .card-mark.gold { color: var(--navy); background: var(--gold); }
+    .service-card { position: relative; overflow: hidden; }
+    .service-card::after { position: absolute; top: 0; right: 0; width: 3.6rem; height: .3rem; background: var(--cyan); content: ""; }
+    .service-card:nth-child(2)::after { background: var(--orange); }
+    .service-card:nth-child(3)::after { background: var(--green); }
+    .service-card:nth-child(4)::after { background: var(--gold); }
+    .service-context { margin: .55rem 0 0; padding-top: .7rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .86rem; }
+    .service-context strong { color: var(--navy); }
+
+    .callout { margin: 1.35rem 0; padding: 1rem 1.2rem; border-left: 5px solid var(--cyan); }
+    .callout strong:first-child { color: var(--blue); }
+    .callout.gold { border-left-color: var(--gold); background: var(--gold-soft); }
+    .callout.gold strong:first-child { color: #805811; }
+    .callout.green { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.green strong:first-child { color: var(--green); }
+    .callout.orange { border-left-color: var(--orange); background: var(--orange-soft); }
+    .callout.orange strong:first-child { color: #8f4026; }
+
+    .architecture { overflow: hidden; margin-top: 1.5rem; border-radius: var(--radius); color: white; background: var(--navy-deep); box-shadow: var(--shadow); }
+    .architecture-head { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; border-bottom: 1px solid rgb(255 255 255 / 10%); color: #cfe6e6; font: .74rem var(--mono); }
+    .architecture-body { padding: 1.6rem 1.2rem; background: linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px), linear-gradient(rgb(255 255 255 / 3%) 1px, transparent 1px); background-size: 24px 24px; }
+    .arch-top { display: grid; grid-template-columns: 1fr 48px 1.15fr; align-items: center; gap: .6rem; max-width: 620px; margin: 0 auto; }
+    .arch-node { padding: .9rem; border: 1px solid rgb(255 255 255 / 15%); border-radius: 10px; background: #123747; text-align: center; }
+    .arch-node.gateway { border-color: rgb(225 173 76 / 68%); box-shadow: inset 0 0 0 2px rgb(225 173 76 / 10%); }
+    .arch-node b { display: block; color: #a8e5e3; }
+    .arch-node.gateway b { color: #f3c96f; }
+    .arch-node small { display: block; margin-top: .25rem; color: #b8ced1; line-height: 1.4; }
+    .arch-arrow { color: var(--gold); font-size: 1.55rem; font-weight: 900; text-align: center; }
+    .fan-label { margin: 1.1rem 0 .65rem; color: #a8ced0; font: .67rem var(--mono); letter-spacing: .1em; text-align: center; }
+    .backend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem; }
+    .backend-grid .arch-node:last-child { border-color: rgb(225 173 76 / 52%); }
+    .tag { display: inline-block; margin-top: .45rem; padding: .18rem .43rem; border-radius: 999px; color: #09232f; background: #a8e5e3; font-size: .63rem; font-weight: 800; }
+    .arch-caption { margin: 0; padding: .85rem 1.1rem; border-top: 1px solid rgb(255 255 255 / 10%); color: #c3d7d9; background: rgb(255 255 255 / 3%); font-size: .82rem; text-align: center; }
+
+    .trace { margin: 1.5rem 0; padding: 0; list-style: none; counter-reset: trace; }
+    .trace > li { position: relative; margin: 0 0 0 1.25rem; padding: 0 0 1.55rem 2.55rem; border-left: 2px solid #b7d9d8; counter-increment: trace; }
+    .trace > li:last-child { border-left-color: transparent; }
+    .trace > li::before { position: absolute; top: -.1rem; left: -1.12rem; display: grid; width: 2.12rem; height: 2.12rem; place-items: center; border: 4px solid var(--paper); border-radius: 50%; color: white; background: var(--blue); content: counter(trace, decimal-leading-zero); font: 800 .67rem var(--mono); }
+    .trace h3 { margin: 0 0 .3rem; }
+    .trace p { margin-bottom: .55rem; }
+    .trace-note { display: inline-block; padding: .2rem .48rem; border-radius: 999px; color: #735014; background: #f7e8bc; font: 800 .67rem var(--mono); }
+
+    .equation { margin: 1.4rem 0; padding: 1.4rem; color: white; background: linear-gradient(120deg, var(--blue), var(--navy)); border-radius: 12px; font-family: var(--mono); text-align: center; box-shadow: var(--shadow); }
+    .equation b { color: #f4cf7c; font-size: 1.15rem; }
+    .equation small { display: block; margin-top: .45rem; color: #d3e5e5; }
+    .table-wrap { overflow-x: auto; margin: 1.25rem 0; }
+    table { width: 100%; border-collapse: collapse; background: var(--white); }
+    th, td { padding: .78rem .88rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: white; background: var(--navy); font-size: .74rem; letter-spacing: .035em; }
+    td { font-size: .89rem; }
+    tr:last-child td { border-bottom: 0; }
+    details { overflow: hidden; margin: 1rem 0; }
+    summary { padding: .85rem 1rem; color: var(--navy); background: var(--paper-deep); cursor: pointer; font-weight: 800; }
+    details > p, details > ul { margin-right: 1.1rem; margin-left: 1.1rem; }
+
+    .build-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.4rem; }
+    .build-column { padding: 1.3rem; border-radius: var(--radius); }
+    .build-column.yours { color: white; background: var(--navy); }
+    .build-column.provided { border: 1px solid var(--line); background: var(--white); }
+    .build-column h3 { margin-top: 0; }
+    .build-column.yours h3 { color: #a8e5e3; }
+    .checklist { padding: 0; list-style: none; }
+    .checklist li { position: relative; padding-left: 1.55rem; }
+    .checklist li::before { position: absolute; left: 0; color: var(--gold); content: ">"; font-family: var(--mono); font-weight: 900; }
+    .provided .checklist li::before { color: var(--green); }
+
+    .finale { overflow: hidden; padding: 2.2rem; border-radius: var(--radius); color: white; background: radial-gradient(circle at 90% 20%, rgb(51 167 184 / 25%), transparent 16rem), var(--navy-deep); box-shadow: var(--shadow); }
+    .finale h2 { color: white; }
+    .finale p { max-width: 730px; color: #d3e4e5; font-size: 1.08rem; }
+    .finale strong { color: #f2ca74; }
+    .terminal-line { margin-top: 1.4rem; padding: .85rem 1rem; border: 1px solid rgb(255 255 255 / 12%); border-radius: 9px; color: #a8e5e3; background: rgb(0 0 0 / 16%); font: .84rem var(--mono); }
+    .terminal-line span { color: var(--gold); }
+    .guide-link { display: inline-block; margin-top: .65rem; padding: .68rem .9rem; border: 1px solid rgb(168 229 227 / 35%); border-radius: 8px; color: #bcebea; background: rgb(255 255 255 / 5%); font: 750 .78rem var(--mono); text-decoration: none; }
+    .guide-link:hover { border-color: var(--gold); color: var(--gold); }
+    footer { padding: 1.6rem; color: #c4d8da; background: var(--navy-deep); text-align: center; font-size: .84rem; }
+
+    @media (max-width: 960px) {
+      .hero-inner { grid-template-columns: 1fr; gap: 2.5rem; min-height: auto; }
+      .meter-console { max-width: 680px; }
+      .page-layout { display: block; }
+      nav { position: static; margin-bottom: 3rem; columns: 2; }
+      nav strong { column-span: all; }
+    }
+    @media (max-width: 720px) {
+      .brief, .grid, .grid.three, .build-split, .arch-top, .backend-grid { grid-template-columns: 1fr; }
+      .brief-signal { min-height: 190px; }
+      .arch-arrow { transform: rotate(90deg); }
+      .usage-track { gap: .35rem; }
+    }
+    @media (max-width: 480px) {
+      .hero-inner { width: min(100% - 1.3rem, 1180px); padding: 3rem 0; }
+      .page-layout { width: min(100% - 1.2rem, 1180px); }
+      nav { columns: 1; }
+      .brief-copy, .brief-signal, .finale { padding: 1.25rem; }
+      .console-head { display: block; }
+      .console-head span { display: block; margin-bottom: .3rem; }
+      .log-row { grid-template-columns: 62px 1fr; }
+      .log-row em { grid-column: 2; }
+      .trace > li { margin-left: 1rem; padding-left: 2rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media print {
+      body { color: black; background: white; font-size: 10pt; }
+      .hero { min-height: auto; color: black; background: white; border-bottom: 3px solid black; }
+      .hero::before, nav { display: none; }
+      .hero-inner, .page-layout { display: block; width: 100%; min-height: auto; padding: 1rem 0; }
+      .hero h1, .hero h1 span, .hero .lede, .hero-claim, .eyebrow { color: black; }
+      .hero-claim { border-color: black; background: white; }
+      .meter-console, .architecture, .brief-signal, .build-column.yours, .finale { color: black; background: white; border: 1px solid black; box-shadow: none; }
+      .console-head, .console-foot, .arch-node, .arch-caption { color: black; background: white; }
+      .arch-node b, .arch-node.gateway b, .arch-node small, .build-column.yours h3, .finale h2, .finale p, .finale strong { color: black; }
+      .usage-slot.used, .usage-slot.blocked { border: 1px solid black; background: white; }
+      .usage-slot.blocked::after { color: black; }
+      section { margin-bottom: 2rem; break-inside: avoid; }
+      .card, .callout, .brief, .table-wrap, details { box-shadow: none; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+      footer { color: black; background: white; border-top: 1px solid black; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow">Computer Networks // Project P1</p>
+        <h1>Model Access <span>Gateway</span></h1>
+        <p class="lede">
+          Build the control point in front of a model service. Your Java gateway will combine
+          several small network conversations into one fair admission decision, even when many
+          clients arrive together.
+        </p>
+        <div class="meta" aria-label="Project technologies">
+          <span class="pill">Java 21</span>
+          <span class="pill">Raw HTTP/1.1</span>
+          <span class="pill">Virtual Threads</span>
+          <span class="pill">RFC 868 Time</span>
+          <span class="pill">WHOIS</span>
+          <span class="pill">Redis RESP</span>
+        </div>
+        <p class="hero-claim">
+          <strong>The central question:</strong> can a server stay correct while it is simultaneously
+          serving clients and waiting on other servers?
+        </p>
+      </div>
+
+      <div class="meter-console" aria-label="A gateway meter allowing three requests and denying the fourth">
+        <div class="console-head">
+          <span><span class="live-dot"></span>GATEWAY ONLINE</span>
+          <span>WINDOW 489321</span>
+        </div>
+        <div class="console-body">
+          <div class="identity-row">
+            <div><span class="meter-label">Caller</span><strong>guest-42</strong></div>
+            <span class="tier-badge">DEFAULT // LIMIT 3</span>
+          </div>
+          <div class="usage-track" aria-hidden="true">
+            <div class="usage-slot used"></div>
+            <div class="usage-slot used"></div>
+            <div class="usage-slot used"></div>
+            <div class="usage-slot blocked"></div>
+          </div>
+          <div class="decision-log">
+            <div class="log-row"><span>ATTEMPT 01</span><b>forward to fLLM</b><em>ALLOW</em></div>
+            <div class="log-row"><span>ATTEMPT 02</span><b>forward to fLLM</b><em>ALLOW</em></div>
+            <div class="log-row"><span>ATTEMPT 03</span><b>forward to fLLM</b><em>ALLOW</em></div>
+            <div class="log-row deny"><span>ATTEMPT 04</span><b>protect capacity</b><em>HTTP 429</em></div>
+          </div>
+        </div>
+        <p class="console-foot">One atomic counter. One defensible decision per request.</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-layout">
+    <nav aria-label="Page contents">
+      <strong>Gateway Index</strong>
+      <a href="#problem">Why This Project</a>
+      <a href="#system">System Map</a>
+      <a href="#services">Meet the Services</a>
+      <a href="#journey">One Request's Journey</a>
+      <a href="#build">Your Work</a>
+      <a href="#finish">Start Building</a>
+    </nav>
+
+    <main>
+      <section id="problem">
+        <p class="kicker">01 // Why This Project</p>
+        <h2>An API needs more than a listening socket</h2>
+        <p class="section-lede">
+          Model inference costs time and computing capacity. If every request goes straight to the
+          model, one busy caller can crowd out everyone else. Real systems place a gateway in front
+          of valuable services to identify callers, enforce policy, and reject excess traffic.
+        </p>
+        <p>
+          P1 turns that idea into a focused networking problem. The supporting services are local
+          and deliberately small, but your gateway must still frame messages, cross process
+          boundaries, overlap independent waits, and remain correct under concurrent load.
+        </p>
+        <div class="grid three">
+          <article class="card">
+            <span class="card-mark">I/O</span>
+            <h3>See the byte stream</h3>
+            <p>Turn raw TCP bytes into complete protocol messages instead of assuming one read equals one message.</p>
+          </article>
+          <article class="card">
+            <span class="card-mark orange">C/S</span>
+            <h3>Play both roles</h3>
+            <p>Act as a server to the original client and as a client to several backend services.</p>
+          </article>
+          <article class="card">
+            <span class="card-mark green">||</span>
+            <h3>Coordinate safely</h3>
+            <p>Use concurrency for responsiveness without allowing concurrent requests to break the limit.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="system">
+        <p class="kicker">02 // System Map</p>
+        <h2>One public service, four private conversations</h2>
+        <p class="section-lede">
+          The caller sees a single HTTP endpoint. Behind it, your gateway gathers a time window, an
+          account tier, and an atomic usage count before deciding whether to contact the model.
+        </p>
+        <div class="architecture" role="img" aria-label="An HTTP client contacts the student gateway. The gateway gets a window from Time, then contacts WHOIS and Redis concurrently, and contacts the fLLM only if the request is allowed.">
+          <div class="architecture-head">
+            <span><span class="live-dot"></span>LOCAL SERVICE NETWORK</span>
+            <span>REQUEST PATH // P1</span>
+          </div>
+          <div class="architecture-body">
+            <div class="arch-top">
+              <div class="arch-node"><b>Concurrent Clients</b><small>Caller ID + plain-text query</small><span class="tag">HTTP/1.1</span></div>
+              <div class="arch-arrow" aria-hidden="true">&rarr;</div>
+              <div class="arch-node gateway"><b>Your Java Gateway</b><small>Frame, meter, decide, forward</small><span class="tag">SERVER + CLIENT</span></div>
+            </div>
+            <p class="fan-label">TIME FIRST // THEN FAN OUT // fLLM ONLY ON ALLOW</p>
+            <div class="backend-grid">
+              <div class="arch-node"><b>Time</b><small>Current fixed window</small><span class="tag">RFC 868</span></div>
+              <div class="arch-node"><b>WHOIS + Redis</b><small>Tier and atomic attempt, in parallel</small><span class="tag">TEXT + RESP2</span></div>
+              <div class="arch-node"><b>fLLM</b><small>Protected model response</small><span class="tag">HTTP + JSON</span></div>
+            </div>
+          </div>
+          <p class="arch-caption">Time finishes first. WHOIS and Redis then run together. The fLLM is contacted only when the request is allowed.</p>
+        </div>
+        <div class="equation">
+          <b>allow = attemptNumber &lt;= limit(tier)</b>
+          <small>DEFAULT or unknown caller: 3 &nbsp;//&nbsp; REGISTERED caller: 10</small>
+        </div>
+        <div class="callout green">
+          <strong>Why the Redis result matters:</strong> one atomic increment gives each concurrent
+          request a distinct attempt number. The requests may finish in any order, but no more than
+          the caller's limit can be approved.
+        </div>
+      </section>
+
+      <section id="services">
+        <p class="kicker">03 // Meet the Services</p>
+        <h2>Familiar systems, simplified for one purpose</h2>
+        <p class="section-lede">
+          The backend programs are supplied. You connect to them using their wire protocols and
+          combine their answers.
+        </p>
+        <div class="grid">
+          <article class="card service-card">
+            <span class="card-mark gold">37</span>
+            <h3>RFC 868 Time</h3>
+            <p>Network time services give systems a shared clock; modern networks generally use NTP.</p>
+            <p class="service-context"><strong>Here:</strong> four bytes place each request into a shared 60-second window.</p>
+          </article>
+          <article class="card service-card">
+            <span class="card-mark orange">43</span>
+            <h3>WHOIS Registry</h3>
+            <p>WHOIS publishes registration records for Internet resources such as domains and address blocks.</p>
+            <p class="service-context"><strong>Here:</strong> a small registry tells the gateway whether a caller has default or registered access.</p>
+          </article>
+          <article class="card service-card">
+            <span class="card-mark green">R</span>
+            <h3>Redis RESP</h3>
+            <p>Redis is an in-memory data store commonly used for caching, counters, coordination, and rate limiting.</p>
+            <p class="service-context"><strong>Here:</strong> atomic <code>INCR</code> assigns every attempt a unique number.</p>
+          </article>
+          <article class="card service-card">
+            <span class="card-mark">AI</span>
+            <h3>Local fLLM</h3>
+            <p>Language-model APIs turn prompts into generated responses and are often expensive, shared resources.</p>
+            <p class="service-context"><strong>Here:</strong> a local ELIZA-style service gives the gateway something valuable to protect.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="journey">
+        <p class="kicker">04 // One Request's Journey</p>
+        <h2>Receive, gather, decide, respond</h2>
+        <ol class="trace">
+          <li>
+            <h3>Receive</h3>
+            <p>Parse one plain-text HTTP request and identify its caller.</p>
+            <span class="trace-note">GATEWAY AS SERVER</span>
+          </li>
+          <li>
+            <h3>Gather</h3>
+            <p>Get the Time window, then query WHOIS and Redis concurrently.</p>
+            <span class="trace-note">GATEWAY AS CLIENT</span>
+          </li>
+          <li>
+            <h3>Decide</h3>
+            <p>Compare the atomic attempt number with the limit for the caller's tier.</p>
+            <span class="trace-note">SHARED STATE, SAFE DECISION</span>
+          </li>
+          <li>
+            <h3>Respond</h3>
+            <p>Forward an allowed query to the fLLM or refuse it with HTTP 429, then answer the original client.</p>
+            <span class="trace-note">ONE COMPLETE EXCHANGE</span>
+          </li>
+        </ol>
+      </section>
+
+      <section id="build">
+        <p class="kicker">05 // Your Work</p>
+        <h2>Complete the networking core, not the infrastructure</h2>
+        <p class="section-lede">
+          The starter is one Java 21 source file. Its listener, virtual-thread executors,
+          configuration, data types, and fLLM adapter are already present. You implement seven
+          focused methods that make the gateway communicate and decide correctly.
+        </p>
+        <div class="build-split">
+          <div class="build-column yours">
+            <h3>You implement</h3>
+            <ul class="checklist">
+              <li>Inbound HTTP request and response framing</li>
+              <li>Small clients for Time, WHOIS, and Redis</li>
+              <li>The concurrent metering and admission decision</li>
+              <li>Cleanup and failure behavior at network boundaries</li>
+            </ul>
+          </div>
+          <div class="build-column provided">
+            <h3>The project provides</h3>
+            <ul class="checklist">
+              <li>The server listener and per-client virtual threads</li>
+              <li>The Time, WHOIS, Redis, and fLLM servers</li>
+              <li>The <code>FakeLLMClient</code> helper</li>
+              <li>Configuration, records, and defensive helpers</li>
+              <li>A local launcher and controlled test environment</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout gold">
+          <strong>The full implementation contract lives in <code>PROMPT.md</code>.</strong> Use it
+          for exact wire formats, validation rules, response statuses, development order, and
+          reference links. This page is the map; the Markdown prompt is the field guide.
+        </div>
+      </section>
+
+      <section id="finish">
+        <div class="finale">
+          <p class="kicker">06 // Start Building</p>
+          <h2>Make several conversations look like one reliable service</h2>
+          <p>
+            A client should not need to know that four backend services participated. It sends one
+            request and receives one answer. Your gateway owns everything in between: message
+            boundaries, protocol translation, concurrent waits, and the final decision.
+          </p>
+          <div class="terminal-line"><span>&gt;</span> gateway decision: user=alice attempt=10 limit=10 action=ALLOW</div>
+        <div class="callout gold">
+          <strong>For a more detailed implementation guide follow the three part tutorial presented underneath modules.</strong>
+        </div>
+
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>Computer Networks // Fall 2026 // Project P1</footer>
+</body>
+</html>
