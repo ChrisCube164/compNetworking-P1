@@ -90,11 +90,11 @@ public class Gateway {
     private static void serve(Socket client, ExecutorService backends, FakeLLMClient fllm) {
         try {
             client.setSoTimeout(5_000);
-            //temp remove IncomingRequest request = readRequest(client.getInputStream());
+            IncomingRequest request = readRequest(client.getInputStream());
 
             // Use request, backends, and fllm to implement the behavior above.
           // temp remove throw new UnsupportedOperationException("TODO: implement serve");
-            writeResponse(client.getOutputStream(), 200, "OK", "Gateway is alive\n");
+            //writeResponse(client.getOutputStream(), 200, "OK", "Gateway is alive\n");
         } catch (RequestException exception) {
             writeSafely(client, 400, "Bad Request", exception.getMessage() + "\n");
         } catch (Exception exception) {
@@ -117,7 +117,35 @@ public class Gateway {
     // body bytes to read. Return immutable headers in an IncomingRequest.
     //
     private static IncomingRequest readRequest(InputStream input) throws IOException {
-        throw new UnsupportedOperationException("TODO: implement readRequest");
+        int[] consumed = {0};
+        String requestLine = readLine(input, consumed);
+        String[] parts = requestLine.split(" ", 3);
+
+        if (!parts[2].equals("HTTP/1.1")) {
+            throw new RequestException("Request is not HTTP/1.1");
+        }
+
+        Map<String, String> header = new HashMap<>();
+        while (true) {
+            String headerLine = readLine(input, consumed);
+            if (headerLine.isEmpty()) {
+                break;
+            }
+
+            String[] headerParts = headerLine.split(":", 2);
+
+            headerParts[0] = headerParts[0].strip().toLowerCase();
+            if (headerParts[0].isEmpty()) {
+                throw new RequestException("Header line is malformed");
+            }
+            headerParts[1] = headerParts[1].strip().toLowerCase();
+
+            header.put(headerParts[0],headerParts[1]);
+        }
+
+        System.out.println(header);
+
+        throw new RequestException("End of readRequest.");
     }
 
     //`````````````````````````````````````````````````````````````````````
@@ -128,7 +156,40 @@ public class Gateway {
     // count, but do not include them in the returned string.
     //
     private static String readLine(InputStream input, int[] consumed) throws IOException {
-        throw new UnsupportedOperationException("TODO: implement readLine");
+        var line = new java.io.ByteArrayOutputStream();
+        while (true) {
+            int next = input.read();
+
+            if (next == -1) {
+                if (line.size() == 0) {
+                    throw new RequestException("EOF was reached before CRLF");
+                }
+                throw new RequestException("connection ended inside a query");
+            }
+
+            consumed[0] += 1;
+            if (consumed[0] > MAX_HEADER_BYTES) {
+                throw new RequestException("Consumed exceeded MAX_HEADER_BYTES");
+            }
+
+            if (next == '\r') {
+                if (input.read() != '\n') {
+                    throw new RequestException("queries must end with CRLF");
+                }
+
+                consumed[0] += 1;
+                if (consumed[0] > MAX_HEADER_BYTES) {
+                    throw new RequestException("Consumed exceeded MAX_HEADER_BYTES");
+                }
+
+                return line.toString(StandardCharsets.US_ASCII);
+            }
+            if (next == '\n') {
+                throw new RequestException("queries must end with CRLF");
+            }
+
+            line.write(next);
+        }
     }
 
     //`````````````````````````````````````````````````````````````````````
@@ -235,9 +296,9 @@ public class Gateway {
 
         header.append("\r\n");
 
-        output.write(header.toString().getBytes());
+        output.write(header.toString().getBytes(StandardCharsets.US_ASCII));
         output.write(bodyBytes);
-
+        output.flush();
     }
 
     //`````````````````````````````````````````````````````````````````````
