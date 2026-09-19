@@ -65,7 +65,6 @@ public class Gateway {
             clients.close();
             backends.close();
         }));
-
         System.out.printf("GATEWAY_READY http://127.0.0.1:%d/chat model=%s%n",
                 config.port(), config.model());
         while (true) {
@@ -92,11 +91,6 @@ public class Gateway {
             client.setSoTimeout(5_000);
             IncomingRequest request = readRequest(client.getInputStream());
 
-            // Temporary test — remove when you start Part 3
-            String query = new String(request.body(), StandardCharsets.UTF_8);
-            String userId = request.headers().get("x-user-id");
-            String reply = "Parsed OK\nUser: " + userId + "\nQuery: " + query + "\n";
-
             if (!request.path().equals("/chat")) {
                 writeResponse(client.getOutputStream(), 404, "Not Found", "Not found.\n");
                 return;
@@ -106,7 +100,42 @@ public class Gateway {
                         "Use POST for /chat.\n", Map.of("Allow", "POST"));
                 return;
             }
-            writeResponse(client.getOutputStream(), 200, "OK", reply);
+
+            String userId = request.headers().get("x-user-id");
+            long window = currentWindow();
+            String key = "usage:" + window + ":" + userId;
+
+            var tierFuture = backends.submit(() -> lookupTier(userId));
+            var attemptFuture = backends.submit(() -> increment(key));
+
+            Tier tier;
+            long attempt;
+            try {
+                tier = tierFuture.get();
+                attempt = attemptFuture.get();
+            } catch (ExecutionException e) {
+                tierFuture.cancel(true);
+                attemptFuture.cancel(true);
+                throw new IOException("Backend call failed", e.getCause());
+            } catch (InterruptedException e) {
+                tierFuture.cancel(true);
+                attemptFuture.cancel(true);
+                Thread.currentThread().interrupt();
+                throw new IOException("Backend call interrupted", e);
+            }
+
+            long limit = (tier == Tier.REGISTERED) ? REGISTERED_LIMIT : DEFAULT_LIMIT;
+            if (attempt > limit) {
+                writeResponse(client.getOutputStream(), 429, "Too Many Requests",
+                        "Rate limit exceeded for " + userId + ".\n");
+                return;
+            }
+
+            String query = new String(request.body(), StandardCharsets.UTF_8);
+            String answer = fllm.query(query);
+            writeResponse(client.getOutputStream(), 200, "OK", answer + "\n");
+
+
 
 
         } catch (RequestException exception) {
@@ -115,10 +144,7 @@ public class Gateway {
             System.err.println("Gateway request failed: " + exception.getMessage());
             writeSafely(client, 502, "Bad Gateway", "A backend service failed.\n");
         } finally {
-            try {
-                client.close();
-            } catch (IOException ignored) {
-            }
+            try { client.close(); } catch (IOException ignored) { }
         }
     }
 
@@ -273,8 +299,59 @@ public class Gateway {
     // the 8,192-byte response limit, use a 3-second socket timeout, and reject
     // malformed records.
     //
-    private static Tier lookupTier(String userId) throws IOException {
-        throw new UnsupportedOperationException("TODO: implement lookupTier");
+    private static Tier lookupTier(String userId) throws IOException
+    {
+        try (var socket = new Socket(BACKEND_HOST, WHOIS_PORT)) {
+            socket.setSoTimeout(3000);
+
+            InputStream input = socket.getInputStream();
+            OutputStream output = socket.getOutputStream();
+
+            output.write((userId + "\r\n").getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            output.flush();
+
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = input.read(chunk)) != -1) {
+                buffer.write(chunk, 0, bytesRead);
+                if (buffer.size() > 8192) {
+                    throw new IOException("WHOIS response too large");
+                }
+            }
+
+            String response = buffer.toString(StandardCharsets.US_ASCII);
+            String[] responseLines = response.split("\n");
+
+            for (String line : responseLines) {
+                if (response.toLowerCase(Locale.ROOT).startsWith("no such domain:")) {
+                    return Tier.DEFAULT;
+                }
+
+                String[] pieces = line.split(":", 2);
+
+                if (!line.contains(":")) {
+                    break;
+                }
+
+                String field = pieces[0].trim();
+                String value = pieces[1].trim();
+
+                if (field.equalsIgnoreCase("Tier")) {
+                    if (value.equalsIgnoreCase("REGISTERED")) {
+                        return Tier.REGISTERED;
+                    }
+
+                    if (value.equalsIgnoreCase("DEFAULT")) {
+                        return Tier.DEFAULT;
+                    }
+                    throw new IOException("Unknown WHOIS tier: " + value);
+                }
+
+            }
+
+            throw new IOException("WHOIS response has no valid Tier field");
+        }
     }
 
     //`````````````````````````````````````````````````````````````````````
@@ -287,7 +364,33 @@ public class Gateway {
     // and do not use GET plus SET.
     //
     private static long increment(String key) throws IOException {
-        throw new UnsupportedOperationException("TODO: implement increment");
+        try (var socket = new Socket(BACKEND_HOST, REDIS_PORT)) {
+            socket.setSoTimeout(3000);
+
+            InputStream input = socket.getInputStream();
+            OutputStream output = socket.getOutputStream();
+
+            String command = "*2\r\n"
+                    + "$4\r\n"
+                    + "INCR\r\n"
+                    + "$" + key.length() + "\r\n"
+                    + key + "\r\n";
+
+            output.write(command.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            output.flush();
+
+            String reply = readBackendLine(input);
+            if (!reply.startsWith(":")) {
+                throw new IOException("Unexpected Redis reply: " + reply);
+            }
+
+            try {
+                return Long.parseLong(reply.substring(1));
+            }
+            catch(NumberFormatException exception) {
+                throw new IOException("Could not parse REDIS reply.");
+            }
+        }
     }
 
     //`````````````````````````````````````````````````````````````````````
