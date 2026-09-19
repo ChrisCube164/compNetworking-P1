@@ -92,9 +92,23 @@ public class Gateway {
             client.setSoTimeout(5_000);
             IncomingRequest request = readRequest(client.getInputStream());
 
-            // Use request, backends, and fllm to implement the behavior above.
-          // temp remove throw new UnsupportedOperationException("TODO: implement serve");
-            //writeResponse(client.getOutputStream(), 200, "OK", "Gateway is alive\n");
+            // Temporary test — remove when you start Part 3
+            String query = new String(request.body(), StandardCharsets.UTF_8);
+            String userId = request.headers().get("x-user-id");
+            String reply = "Parsed OK\nUser: " + userId + "\nQuery: " + query + "\n";
+
+            if (!request.path().equals("/chat")) {
+                writeResponse(client.getOutputStream(), 404, "Not Found", "Not found.\n");
+                return;
+            }
+            if (!request.method().equals("POST")) {
+                writeResponse(client.getOutputStream(), 405, "Method Not Allowed",
+                        "Use POST for /chat.\n", Map.of("Allow", "POST"));
+                return;
+            }
+            writeResponse(client.getOutputStream(), 200, "OK", reply);
+
+
         } catch (RequestException exception) {
             writeSafely(client, 400, "Bad Request", exception.getMessage() + "\n");
         } catch (Exception exception) {
@@ -138,14 +152,47 @@ public class Gateway {
             if (headerParts[0].isEmpty()) {
                 throw new RequestException("Header line is malformed");
             }
-            headerParts[1] = headerParts[1].strip().toLowerCase();
+            headerParts[1] = headerParts[1].strip();
 
             header.put(headerParts[0],headerParts[1]);
         }
 
-        System.out.println(header);
+        String userId = header.get("x-user-id");
+        if (userId == null) {
+            throw new RequestException("Missing X-User-ID header");
+        }
+        if (!userId.matches("[A-Za-z0-9._-]{1,64}")) {
+            throw new RequestException("Invalid X-User-ID format");
+        }
 
-        throw new RequestException("End of readRequest.");
+        String contentType = header.get("content-type");
+        if (contentType == null) {
+            throw new RequestException("Missing Content-Type header");
+        }
+        String mediaType = contentType.split(";")[0].trim();
+        if (!mediaType.equalsIgnoreCase("text/plain")) {
+            throw new RequestException("Content-Type must be text/plain");
+        }
+
+        int contentLength = Integer.parseInt(header.get("content-length"));
+        if (contentLength < 0) {
+            throw new RequestException("Content-Length is invalid/negative.");
+        }
+        if (contentLength > MAX_QUERY_BYTES) {
+            throw new RequestException("Content-Length is greater than MAX_QUERY_BYTES.");
+        }
+
+        byte[] bodyBytes = input.readNBytes(contentLength);
+        if (bodyBytes.length < contentLength) {
+            throw new RequestException("Request body is incomplete");
+        }
+
+        String body = new String(bodyBytes, StandardCharsets.UTF_8);
+        if (body.isBlank()) {
+            throw new RequestException("Query is blank");
+        }
+
+        return new IncomingRequest(parts[0], parts[1], Map.copyOf(header), bodyBytes);
     }
 
     //`````````````````````````````````````````````````````````````````````
@@ -200,7 +247,21 @@ public class Gateway {
     // decoded value by SECONDS_PER_WINDOW. Bound socket inactivity to 3 seconds.
     //
     private static long currentWindow() throws IOException {
-        throw new UnsupportedOperationException("TODO: implement currentWindow");
+        try (var socket = new Socket(BACKEND_HOST, TIME_PORT)) {
+            socket.setSoTimeout(3000);
+
+            InputStream input = socket.getInputStream();
+            byte[] data = input.readNBytes(4);
+
+            if (data.length < 4) {
+                throw new IOException("Server sent only " + data.length + " bytes");
+            }
+
+            int signed = ByteBuffer.wrap(data).getInt();
+            long unsigned = Integer.toUnsignedLong(signed);
+
+            return unsigned / SECONDS_PER_WINDOW;
+        }
     }
 
     //`````````````````````````````````````````````````````````````````````
