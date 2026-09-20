@@ -138,9 +138,6 @@ public class Gateway {
             String answer = fllm.query(query);
             writeResponse(client.getOutputStream(), 200, "OK", answer + "\n");
 
-
-
-
         } catch (RequestException exception) {
             writeSafely(client, 400, "Bad Request", exception.getMessage() + "\n");
         } catch (Exception exception) {
