@@ -74,7 +74,6 @@ public class Gateway {
     }
 
     //`````````````````````````````````````````````````````````````````````
-    // TODO: Handle one client connection from request framing through response.
     //
     // Accept only POST /chat with a valid X-User-ID, text/plain content, and a
     // nonblank UTF-8 query. Use 404 for another path and 405 with Allow: POST for
@@ -91,6 +90,7 @@ public class Gateway {
             client.setSoTimeout(5_000);
             IncomingRequest request = readRequest(client.getInputStream());
 
+            // Route request before contacting backend services.
             if (!request.path().equals("/chat")) {
                 writeResponse(client.getOutputStream(), 404, "Not Found", "Not found.\n");
                 return;
@@ -102,9 +102,11 @@ public class Gateway {
             }
 
             String userId = request.headers().get("x-user-id");
+            // Time must finish first for the Redis key.
             long window = currentWindow();
             String key = "usage:" + window + ":" + userId;
 
+            // Start the WHOIS and REDIS with a future.
             var tierFuture = backends.submit(() -> lookupTier(userId));
             var attemptFuture = backends.submit(() -> increment(key));
 
@@ -125,6 +127,7 @@ public class Gateway {
             }
 
             long limit = (tier == Tier.REGISTERED) ? REGISTERED_LIMIT : DEFAULT_LIMIT;
+            // Denied requests stop here and never reach the services.
             if (attempt > limit) {
                 writeResponse(client.getOutputStream(), 429, "Too Many Requests",
                         "Rate limit exceeded for " + userId + ".\n");
@@ -149,7 +152,6 @@ public class Gateway {
     }
 
     //`````````````````````````````````````````````````````````````````````
-    // TODO: Parse one request from the supported HTTP/1.1 subset.
     //
     // The request line has method, path, and an exact HTTP/1.1 version. Header
     // names are case-insensitive and duplicate names are invalid. Content-Length
@@ -157,15 +159,22 @@ public class Gateway {
     // body bytes to read. Return immutable headers in an IncomingRequest.
     //
     private static IncomingRequest readRequest(InputStream input) throws IOException {
+        // One size counter for readLine().
         int[] consumed = {0};
         String requestLine = readLine(input, consumed);
         String[] parts = requestLine.split(" ", 3);
+
+        if (parts.length != 3) {
+            throw new RequestException("Request line is malformed.");
+        }
+
 
         if (!parts[2].equals("HTTP/1.1")) {
             throw new RequestException("Request is not HTTP/1.1");
         }
 
         Map<String, String> header = new HashMap<>();
+        // Blank line marks end of the HTTP header.
         while (true) {
             String headerLine = readLine(input, consumed);
             if (headerLine.isEmpty()) {
@@ -173,6 +182,9 @@ public class Gateway {
             }
 
             String[] headerParts = headerLine.split(":", 2);
+            if (headerParts.length < 2) {
+                throw new RequestException("Header line is malformed");
+            }
 
             headerParts[0] = headerParts[0].strip().toLowerCase();
             if (headerParts[0].isEmpty()) {
@@ -180,9 +192,14 @@ public class Gateway {
             }
             headerParts[1] = headerParts[1].strip();
 
+            if (header.containsKey(headerParts[0])) {
+                throw new RequestException("Duplicate header: " + headerParts[1]);
+            }
+
             header.put(headerParts[0],headerParts[1]);
         }
 
+        // Validate the necessary headers.
         String userId = header.get("x-user-id");
         if (userId == null) {
             throw new RequestException("Missing X-User-ID header");
@@ -200,7 +217,21 @@ public class Gateway {
             throw new RequestException("Content-Type must be text/plain");
         }
 
-        int contentLength = Integer.parseInt(header.get("content-length"));
+        String lengthText = header.get("content-length");
+
+        if (lengthText == null) {
+            throw new RequestException("Missing Content-Length header");
+        }
+
+        int contentLength;
+
+        try {
+            contentLength = Integer.parseInt(lengthText);
+        }
+        catch (NumberFormatException exception) {
+            throw new RequestException("Invalid Content-Length");
+        }
+
         if (contentLength < 0) {
             throw new RequestException("Content-Length is invalid/negative.");
         }
@@ -208,6 +239,7 @@ public class Gateway {
             throw new RequestException("Content-Length is greater than MAX_QUERY_BYTES.");
         }
 
+        // Content-Length tells us how many bytes we need to read.
         byte[] bodyBytes = input.readNBytes(contentLength);
         if (bodyBytes.length < contentLength) {
             throw new RequestException("Request body is incomplete");
@@ -222,7 +254,6 @@ public class Gateway {
     }
 
     //`````````````````````````````````````````````````````````````````````
-    // TODO: Read one ASCII HTTP line ending in CRLF.
     //
     // A bare LF, EOF inside a line, or cumulative request-line/header usage over
     // MAX_HEADER_BYTES is invalid. Include both CRLF bytes in the shared consumed
@@ -231,6 +262,7 @@ public class Gateway {
     private static String readLine(InputStream input, int[] consumed) throws IOException {
         var line = new java.io.ByteArrayOutputStream();
         while (true) {
+            // Read one byte at a time to find the CRLF sequence.
             int next = input.read();
 
             if (next == -1) {
@@ -246,6 +278,7 @@ public class Gateway {
             }
 
             if (next == '\r') {
+                // HTTP lines must end with CRLF sequence.
                 if (input.read() != '\n') {
                     throw new RequestException("queries must end with CRLF");
                 }
@@ -266,7 +299,6 @@ public class Gateway {
     }
 
     //`````````````````````````````````````````````````````````````````````
-    // TODO: Obtain the current fixed window from the RFC 868 Time service.
     //
     // The TCP response is exactly four bytes containing an unsigned, big-endian
     // count of seconds since 1900. Reject an incomplete response and divide the
@@ -276,6 +308,7 @@ public class Gateway {
         try (var socket = new Socket(BACKEND_HOST, TIME_PORT)) {
             socket.setSoTimeout(3000);
 
+            // RFC 868 timeserver protocol, we have to read four bytes.
             InputStream input = socket.getInputStream();
             byte[] data = input.readNBytes(4);
 
@@ -283,6 +316,7 @@ public class Gateway {
                 throw new IOException("Server sent only " + data.length + " bytes");
             }
 
+            // Turn signed int into unsigned int.
             int signed = ByteBuffer.wrap(data).getInt();
             long unsigned = Integer.toUnsignedLong(signed);
 
@@ -291,7 +325,6 @@ public class Gateway {
     }
 
     //`````````````````````````````````````````````````````````````````````
-    // TODO: Query WHOIS for one caller's account tier.
     //
     // Send the ASCII user ID followed by CRLF, then read the response until EOF.
     // "No such domain:" maps to DEFAULT and is not an error. Otherwise find the
@@ -307,9 +340,11 @@ public class Gateway {
             InputStream input = socket.getInputStream();
             OutputStream output = socket.getOutputStream();
 
+            // WHOIS server expects ASCII query followed by CRLF.
             output.write((userId + "\r\n").getBytes(java.nio.charset.StandardCharsets.US_ASCII));
             output.flush();
 
+            // WHOIS closes conversation by ending the connection.
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             byte[] chunk = new byte[1024];
             int bytesRead;
@@ -323,6 +358,7 @@ public class Gateway {
             String response = buffer.toString(StandardCharsets.US_ASCII);
             String[] responseLines = response.split("\n");
 
+            // Convert Tier field into the Java enum value.
             for (String line : responseLines) {
                 if (response.toLowerCase(Locale.ROOT).startsWith("no such domain:")) {
                     return Tier.DEFAULT;
@@ -355,7 +391,6 @@ public class Gateway {
     }
 
     //`````````````````````````````````````````````````````````````````````
-    // TODO: Atomically reserve and return this request's attempt number.
     //
     // Encode one RESP2 array containing INCR and the supplied ASCII key. RESP
     // bulk strings use byte lengths and every protocol line ends in CRLF. A
@@ -370,6 +405,7 @@ public class Gateway {
             InputStream input = socket.getInputStream();
             OutputStream output = socket.getOutputStream();
 
+            // Redis INCR command.
             String command = "*2\r\n"
                     + "$4\r\n"
                     + "INCR\r\n"
@@ -379,6 +415,7 @@ public class Gateway {
             output.write(command.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
             output.flush();
 
+            // Checking for a successful reply, should have a ':'.
             String reply = readBackendLine(input);
             if (!reply.startsWith(":")) {
                 throw new IOException("Unexpected Redis reply: " + reply);
@@ -436,7 +473,6 @@ public class Gateway {
     }
 
     //`````````````````````````````````````````````````````````````````````
-    // TODO: Frame one UTF-8 plain-text HTTP/1.1 response.
     //
     // Include the status line, Content-Type, byte-oriented Content-Length,
     // Connection: close, any extra headers, and the blank line before the body.
@@ -444,7 +480,7 @@ public class Gateway {
     //
     private static void writeResponse(OutputStream output, int status, String reason, String body,
                                        Map<String, String> extraHeaders) throws IOException {
-        //throw new UnsupportedOperationException("TODO: implement writeResponse");
+        // Content-Length must matche the bytes actually written.
         byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
 
         StringBuilder header = new StringBuilder();
@@ -458,8 +494,10 @@ public class Gateway {
             header.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
         }
 
+        // Separating HTTP headers from the body.
         header.append("\r\n");
 
+        // HTTP headers are ASCII; the response body is UTF-8.
         output.write(header.toString().getBytes(StandardCharsets.US_ASCII));
         output.write(bodyBytes);
         output.flush();
